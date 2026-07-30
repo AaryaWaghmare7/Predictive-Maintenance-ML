@@ -1,0 +1,13 @@
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  target_column: null
+
+model:
+  test_size: 0.2
+  random_state: 42
+
+outputs:
+  model_dir: models
+  metrics_dir: reports/metrics
+  figures_dir: reports/figures

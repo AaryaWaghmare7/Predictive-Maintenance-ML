@@ -22,12 +22,17 @@ env/
 
 # Data files
 data/raw/*
+data/external/*
+data/interim/*
 data/processed/*
 !data/raw/.gitkeep
+!data/external/.gitkeep
+!data/interim/.gitkeep
 !data/processed/.gitkeep
 
 # Model artifacts
 /models/
+!/models/.gitkeep
 *.pkl
 *.joblib
 *.h5
@@ -35,7 +40,15 @@ data/processed/*
 
 # Reports
 reports/figures/*
+reports/metrics/*
 !reports/figures/.gitkeep
+!reports/metrics/.gitkeep
+
+# Logs and outputs
+logs/*
+outputs/predictions/*
+!logs/.gitkeep
+!outputs/predictions/.gitkeep
 
 # OS/editor
 .DS_Store
