@@ -1,13 +1,12 @@
-"""Feature engineering helpers for predictive maintenance data."""
+"""Feature engineering helpers for EV predictive maintenance data.
+
+This file keeps beginner-friendly feature utilities. No real model
+features are created yet because the dataset schema is still unknown.
+"""
 
 from __future__ import annotations
 
 import pandas as pd
-
-
-def load_raw_dataset(path: str) -> pd.DataFrame:
-    """Load a raw CSV dataset from disk."""
-    return pd.read_csv(path)
 
 
 def clean_column_names(dataframe: pd.DataFrame) -> pd.DataFrame:

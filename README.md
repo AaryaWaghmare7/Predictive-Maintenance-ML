@@ -1,11 +1,13 @@
-# Predictive-Maintenance-ML
+# EV Predictive Maintenance AI
 
-A machine learning-based predictive maintenance system that analyzes electric motor data to detect patterns, predict potential failures, and estimate failure risk before breakdowns occur.
+A beginner-friendly machine-learning project for predictive maintenance of electric vehicle motors using publicly available electric motor/EV datasets.
+
+Tesla is used only as an industry case study. This project does not use Tesla proprietary data.
 
 ## Project Structure
 
 ```text
-Predictive-Maintenance-ML/
+EV-Predictive-Maintenance-AI/
 ├── data/
 │   ├── external/       # Third-party reference data
 │   ├── interim/        # Intermediate transformed data
@@ -25,10 +27,17 @@ Predictive-Maintenance-ML/
 │   └── metrics/        # Evaluation metrics
 ├── scripts/            # Runnable project scripts
 ├── src/
+│   ├── api/            # Future web/API deployment
+│   ├── config/         # Shared project paths/settings
 │   ├── data/           # Dataset loading utilities
+│   ├── eda/            # Exploratory data analysis helpers
 │   ├── evaluation/     # Metrics and validation helpers
 │   ├── features/       # Feature engineering code
-│   ├── models/         # Training and prediction code
+│   ├── models/         # Model-related code
+│   ├── prediction/     # Future prediction pipeline
+│   ├── preprocessing/  # Data cleaning and validation
+│   ├── storage/        # Model storage helpers
+│   ├── training/       # Future training entry points
 │   ├── utils/          # Shared helpers
 │   └── visualization/  # Plotting utilities
 └── tests/              # Tests
@@ -54,15 +63,22 @@ To inspect the first dataset file found in `data/raw/`, run:
 python scripts/inspect_dataset.py
 ```
 
-After choosing the target column, train a baseline model with:
+Model training is intentionally not implemented yet.
+
+After the dataset is inspected and the target column is chosen, training code can be added under `src/training/`.
+
+The placeholder training script currently prints a message:
 
 ```bash
-python scripts/train_baseline.py --data data/raw/your_dataset.csv --target your_target_column
+python scripts/train_baseline.py
 ```
 
 ## Next Steps
 
 1. Add the Kaggle dataset to `data/raw/`.
-2. Create an exploratory notebook in `notebooks/`.
+2. Run `python scripts/inspect_dataset.py`.
 3. Build preprocessing code in `src/features/`.
-4. Train baseline models in `src/models/`.
+4. Create an exploratory notebook in `notebooks/eda/`.
+5. Decide the target column before any model training.
+
+See `docs/PROJECT_STRUCTURE.md` for a folder-by-folder explanation.

@@ -1,11 +1,15 @@
-"""Baseline training entry point for predictive maintenance models."""
+"""Legacy placeholder for model-related code.
+
+Actual training code should live in `src/training/` once the dataset has
+been inspected and the user approves model-building work.
+"""
 
 from __future__ import annotations
 
 
 def main() -> None:
-    """Run model training."""
-    print("Add dataset loading, preprocessing, and model training here.")
+    """Print a clear message instead of training a model."""
+    print("Model training is not implemented yet. Use src/training/ later.")
 
 
 if __name__ == "__main__":

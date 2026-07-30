@@ -2,10 +2,14 @@
 
 ## Project Goal
 
-Build a predictive maintenance machine learning model using the Kaggle dataset placed in `data/raw/`.
+Build "EV Predictive Maintenance AI", a beginner-friendly predictive maintenance project for electric vehicle motors using publicly available electric motor/EV datasets.
+
+Tesla may be discussed only as an industry case study. This project does not use Tesla proprietary data.
 
 ## Working Guidelines
 
+- Keep code beginner friendly, clear, and well documented.
+- Do not build the ML model until the dataset has been inspected and the user asks to proceed.
 - Keep raw dataset files in `data/raw/`.
 - Save cleaned datasets in `data/processed/`.
 - Put reusable Python code under `src/`.
@@ -20,6 +24,8 @@ Build a predictive maintenance machine learning model using the Kaggle dataset p
 
 1. Inspect the dataset schema.
 2. Clean and preprocess the data.
-3. Build baseline classification/regression models.
-4. Evaluate model performance.
-5. Save the best model and document results.
+3. Perform exploratory data analysis.
+4. Create feature engineering functions.
+5. Build baseline classification/regression models only after approval.
+6. Evaluate model performance.
+7. Save the best model and document results.
