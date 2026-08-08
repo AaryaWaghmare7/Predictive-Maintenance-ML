@@ -1,84 +1,110 @@
 # EV Predictive Maintenance AI
 
-A beginner-friendly machine-learning project for predictive maintenance of electric vehicle motors using publicly available electric motor/EV datasets.
+A beginner-friendly machine-learning project that uses EV sensor data to
+support predictive-maintenance analysis. The project focuses on a repeatable
+workflow: inspect data, clean it, explore it, choose a target, and only then
+train and evaluate a model.
 
-Tesla is used only as an industry case study. This project does not use Tesla proprietary data.
+> Tesla may be used as an industry case study only. This project uses no Tesla
+> proprietary data.
 
-## Project Structure
+## Project status
 
-```text
-EV-Predictive-Maintenance-AI/
-├── data/
-│   ├── external/       # Third-party reference data
-│   ├── interim/        # Intermediate transformed data
-│   ├── raw/            # Original Kaggle dataset files
-│   └── processed/      # Cleaned/transformed datasets
-├── configs/            # Config files for training runs
-├── docs/               # Project documentation
-├── logs/               # Runtime logs
-├── models/             # Trained model artifacts
-├── notebooks/          # EDA and experiment notebooks
-│   ├── eda/            # Exploratory analysis
-│   └── modeling/       # Model experiments
-├── outputs/
-│   └── predictions/    # Prediction outputs
-├── reports/
-│   ├── figures/        # Plots and generated visuals
-│   └── metrics/        # Evaluation metrics
-├── scripts/            # Runnable project scripts
-├── src/
-│   ├── api/            # Future web/API deployment
-│   ├── config/         # Shared project paths/settings
-│   ├── data/           # Dataset loading utilities
-│   ├── eda/            # Exploratory data analysis helpers
-│   ├── evaluation/     # Metrics and validation helpers
-│   ├── features/       # Feature engineering code
-│   ├── models/         # Model-related code
-│   ├── prediction/     # Future prediction pipeline
-│   ├── preprocessing/  # Data cleaning and validation
-│   ├── storage/        # Model storage helpers
-│   ├── training/       # Future training entry points
-│   ├── utils/          # Shared helpers
-│   └── visualization/  # Plotting utilities
-└── tests/              # Tests
-```
+| Stage | Status |
+| --- | --- |
+| Dataset inspection | Complete |
+| Data preprocessing | Complete |
+| Exploratory data analysis (EDA) | Next |
+| Target selection | Pending |
+| Model training and evaluation | Pending |
+
+The current dataset contains 175,393 records and 30 columns. The first
+preprocessing run found no missing values and no exact duplicate rows.
 
 ## Setup
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+Create and activate a virtual environment, then install the dependencies.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
 ## Data
 
-Place the downloaded Kaggle dataset files in `data/raw/`.
+Keep original datasets in `data/raw/`. Cleaned datasets are written to
+`data/processed/`. Both folders are ignored by Git, so large data files are
+kept local and never pushed to GitHub.
 
-Large data files are intentionally ignored by Git. Keep only small placeholder files such as `.gitkeep` in the repository.
+To inspect the first dataset in `data/raw/`:
 
-To inspect the first dataset file found in `data/raw/`, run:
-
-```bash
+```powershell
 python scripts/inspect_dataset.py
 ```
 
-Model training is intentionally not implemented yet.
+## Preprocessing
 
-After the dataset is inspected and the target column is chosen, training code can be added under `src/training/`.
+The preprocessing script performs safe, repeatable cleaning:
 
-The placeholder training script currently prints a message:
+- standardizes column names to `snake_case`
+- converts and sorts the `timestamp` column
+- replaces infinite numeric values with missing values
+- removes exact duplicate rows
+- stops if missing values remain, so an imputation choice is made explicitly
+- writes a JSON data-quality report
 
-```bash
-python scripts/train_baseline.py
+Run it with a dataset already placed in `data/raw/`:
+
+```powershell
+python scripts/preprocess_dataset.py
 ```
 
-## Next Steps
+Or provide an explicit file path:
 
-1. Add the Kaggle dataset to `data/raw/`.
-2. Run `python scripts/inspect_dataset.py`.
-3. Build preprocessing code in `src/features/`.
-4. Create an exploratory notebook in `notebooks/eda/`.
-5. Decide the target column before any model training.
+```powershell
+python scripts/preprocess_dataset.py --input "C:\path\to\EV_Predictive_Maintenance_Dataset_CSV.csv"
+```
 
-See `docs/PROJECT_STRUCTURE.md` for a folder-by-folder explanation.
+Outputs:
+
+- `data/processed/ev_predictive_maintenance_cleaned.csv`
+- `reports/metrics/preprocessing_report.json`
+
+## Next step: EDA and target selection
+
+Create an exploratory notebook in `notebooks/eda/` using the cleaned data.
+The notebook should examine distributions, sensor relationships, and the
+possible prediction targets:
+
+- `failure_probability`
+- `maintenance_type`
+- `rul` (remaining useful life)
+- `ttf` (time to failure)
+- `component_health_score`
+
+Choose one target before training. For example, predicting `rul` is a
+regression task, while predicting `maintenance_type` is a classification task.
+
+## Collaboration workflow
+
+Do all work on a personal branch, then open a pull request for review:
+
+```powershell
+git checkout -b tejaswini/feature-name
+git add src scripts tests README.md
+git commit -m "Add preprocessing pipeline"
+git push -u origin tejaswini/feature-name
+```
+
+## Project layout
+
+```text
+data/raw/          Original local datasets
+data/processed/    Local cleaned datasets
+notebooks/eda/     Exploratory data analysis notebooks
+scripts/           Runnable commands
+src/preprocessing/ Reusable cleaning and validation code
+reports/metrics/   Local preprocessing and model reports
+tests/             Automated checks for reusable code
+```
