@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Allow the documented ``python scripts/inspect_dataset.py`` command to find
+# project packages without requiring an absolute path or package installation.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.data.load_data import list_raw_data_files, load_dataset
 
 

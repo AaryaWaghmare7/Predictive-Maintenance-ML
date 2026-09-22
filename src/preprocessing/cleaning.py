@@ -7,6 +7,18 @@ dataset columns before feature engineering or model training.
 from __future__ import annotations
 
 import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+
+DEFAULT_LEAKAGE_COLUMNS = (
+    "Maintenance_Type",
+    "RUL",
+    "TTF",
+    "Component_Health_Score",
+)
 
 
 def normalize_column_names(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -61,3 +73,75 @@ def replace_infinite_values(dataframe: pd.DataFrame) -> pd.DataFrame:
     numeric_columns = cleaned.select_dtypes(include="number").columns
     cleaned[numeric_columns] = cleaned[numeric_columns].replace([float("inf"), float("-inf")], pd.NA)
     return cleaned
+
+
+def parse_timestamp_column(
+    dataframe: pd.DataFrame, timestamp_column: str = "Timestamp"
+) -> pd.DataFrame:
+    """Return a copy with a validated datetime timestamp column.
+
+    Invalid values raise an error rather than silently becoming missing data.
+    The original column name is retained to keep the raw schema recognizable.
+    """
+    if timestamp_column not in dataframe.columns:
+        raise ValueError(f"Missing timestamp column: {timestamp_column}")
+
+    cleaned = dataframe.copy()
+    cleaned[timestamp_column] = pd.to_datetime(cleaned[timestamp_column], errors="raise")
+    return cleaned
+
+
+def select_classification_features(
+    dataframe: pd.DataFrame,
+    target_column: str = "Failure_Probability",
+    timestamp_column: str = "Timestamp",
+    leakage_columns: tuple[str, ...] = DEFAULT_LEAKAGE_COLUMNS,
+) -> pd.DataFrame:
+    """Return candidate sensor and operating features for failure classification.
+
+    Timestamp stays in the dataset for ordering and audit checks, but is not an
+    initial model input. Known target, post-outcome, and maintenance-result
+    fields are excluded to prevent leakage. This function performs selection
+    only; it does not fit any transformation.
+    """
+    exclusions = {target_column, timestamp_column, *leakage_columns}
+    return dataframe.loc[:, [column for column in dataframe.columns if column not in exclusions]].copy()
+
+
+def chronological_train_test_split(
+    dataframe: pd.DataFrame,
+    timestamp_column: str = "Timestamp",
+    test_size: float = 0.2,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split ordered time-series data into earlier train and later test sets."""
+    if not 0 < test_size < 1:
+        raise ValueError("test_size must be between 0 and 1.")
+    if timestamp_column not in dataframe.columns:
+        raise ValueError(f"Missing timestamp column: {timestamp_column}")
+
+    ordered = dataframe.sort_values(timestamp_column, kind="stable").reset_index(drop=True)
+    split_index = int(len(ordered) * (1 - test_size))
+    if split_index == 0 or split_index == len(ordered):
+        raise ValueError("The dataset is too small for the requested split.")
+    return ordered.iloc[:split_index].copy(), ordered.iloc[split_index:].copy()
+
+
+def build_numeric_preprocessor(numeric_features: list[str]) -> ColumnTransformer:
+    """Create an unfitted numeric preprocessing pipeline for later training.
+
+    Median imputation and scaling are defined here, but fitting must happen only
+    on the chronological training partition inside a future model pipeline.
+    """
+    if not numeric_features:
+        raise ValueError("At least one numeric feature is required.")
+
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    return ColumnTransformer(
+        transformers=[("numeric", numeric_pipeline, numeric_features)],
+        remainder="drop",
+    )
