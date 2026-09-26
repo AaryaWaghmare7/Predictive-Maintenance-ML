@@ -20,6 +20,39 @@ DEFAULT_LEAKAGE_COLUMNS = (
     "Component_Health_Score",
 )
 
+MODEL_1_TARGET = "Failure_Probability"
+MODEL_1_EXCLUDED_COLUMNS = (
+    "Timestamp",
+    MODEL_1_TARGET,
+    *DEFAULT_LEAKAGE_COLUMNS,
+)
+MODEL_1_OPERATIONAL_FEATURES = (
+    "SoC",
+    "SoH",
+    "Battery_Voltage",
+    "Battery_Current",
+    "Battery_Temperature",
+    "Charge_Cycles",
+    "Motor_Temperature",
+    "Motor_Vibration",
+    "Motor_Torque",
+    "Motor_RPM",
+    "Power_Consumption",
+    "Brake_Pad_Wear",
+    "Brake_Pressure",
+    "Reg_Brake_Efficiency",
+    "Tire_Pressure",
+    "Tire_Temperature",
+    "Suspension_Load",
+    "Ambient_Temperature",
+    "Ambient_Humidity",
+    "Load_Weight",
+    "Driving_Speed",
+    "Distance_Traveled",
+    "Idle_Time",
+    "Route_Roughness",
+)
+
 
 def normalize_column_names(dataframe: pd.DataFrame) -> pd.DataFrame:
     """Return a copy with simple snake_case column names.
@@ -106,6 +139,36 @@ def select_classification_features(
     """
     exclusions = {target_column, timestamp_column, *leakage_columns}
     return dataframe.loc[:, [column for column in dataframe.columns if column not in exclusions]].copy()
+
+
+def select_model_1_features(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Return the fixed 24-column input matrix for Model 1.
+
+    Model 1 classifies the documented ``Failure_Probability`` label. Selecting
+    a fixed allowlist, rather than every column outside an exclusion list,
+    prevents new or undocumented columns from silently entering the model.
+    This function only selects columns; it does not fit or apply a transform.
+    """
+    missing_features = [
+        feature for feature in MODEL_1_OPERATIONAL_FEATURES if feature not in dataframe.columns
+    ]
+    if missing_features:
+        raise ValueError(f"Missing approved Model 1 features: {missing_features}")
+
+    return dataframe.loc[:, list(MODEL_1_OPERATIONAL_FEATURES)].copy()
+
+
+def get_model_1_xy(dataframe: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    """Return Model 1 inputs and the binary failure target without fitting data.
+
+    The returned inputs contain only ``MODEL_1_OPERATIONAL_FEATURES``. The
+    target is copied so callers cannot mutate the source dataframe by changing
+    the returned values.
+    """
+    if MODEL_1_TARGET not in dataframe.columns:
+        raise ValueError(f"Missing Model 1 target column: {MODEL_1_TARGET}")
+
+    return select_model_1_features(dataframe), dataframe[MODEL_1_TARGET].copy()
 
 
 def chronological_train_test_split(

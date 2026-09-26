@@ -1,7 +1,7 @@
 data:
   raw_dir: data/raw
   processed_dir: data/processed
-  target_column: null
+  target_column: Failure_Probability
 
 model:
   test_size: 0.2

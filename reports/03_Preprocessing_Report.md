@@ -14,14 +14,14 @@ This report documents preparation for a future failure-state classification task
 
 ## Target decision
 
-`Failure_Probability` is the proposed target because it is the stated primary classification field and its observed values are binary integers:
+`Failure_Probability` is the locked Model 1 target. Official Kaggle documentation for the EVIoT-PredictiveMaint Dataset defines `0` as No Failure and `1` as Failure. The observed values are binary integers:
 
 | Value | Rows | Share |
 | --- | ---: | ---: |
 | 0 | 158,061 | 90.12% |
 | 1 | 17,332 | 9.88% |
 
-Despite its name, this column is not a continuous probability in this file. Until source documentation defines the label, it is treated only as a binary failure-state indicator, not as a calibrated probability or a confirmed future-risk label. The class imbalance is documented but no SMOTE, class weighting, undersampling, or other balancing was applied in preprocessing.
+Despite its name, this column is not a continuous probability in this file. It is a binary failure label, not a calibrated probability. The class imbalance is documented but no SMOTE, class weighting, undersampling, or other balancing was applied in preprocessing.
 
 ## Missing values, duplicates, and types
 
@@ -36,7 +36,7 @@ No rows or columns were dropped for missingness or duplication because the check
 
 ## Feature selection and leakage prevention
 
-The initial candidate input set has 24 sensor and operating columns. The following fields are excluded before future model fitting:
+The final Model 1 input set has 24 approved sensor and operating columns. A fixed allowlist is used so undocumented future columns cannot silently enter `X`. The following fields are excluded before future model fitting:
 
 | Excluded field | Decision |
 | --- | --- |
@@ -86,10 +86,10 @@ The transformer remains unfitted. A later training workflow must combine it with
 
 ## Remaining uncertainties
 
-1. The source documentation must define whether `Failure_Probability=1` is a current failure, a future failure within a horizon, or another event definition.
-2. A codebook and availability timing are needed for `Maintenance_Type`, `RUL`, `TTF`, and `Component_Health_Score` before any could be considered safe features.
+1. The label meanings are confirmed, but the Kaggle documentation has not yet established the exact observation timing, prediction horizon, or affected component for each row.
+2. A codebook and availability timing are needed for `Maintenance_Type`, `RUL`, `TTF`, and `Component_Health_Score` before any could be considered safe Model 1 features.
 3. The single series has almost no short-term autocorrelation in the measured columns, which is unusual for physical 15-minute sensor telemetry. Confirm whether records were synthetically generated or independently sampled before interpreting model results as real-world predictive maintenance performance.
 
 ## Next step
 
-After the label meaning and leakage timing are confirmed, define feature engineering separately and then build a baseline model pipeline using the chronological split.
+The approved chronological Logistic Regression baseline has now been completed. See `reports/05_Baseline_Model_Report.md`. Do not begin another experiment, feature-engineering step, or Model 2 without explicit approval.
