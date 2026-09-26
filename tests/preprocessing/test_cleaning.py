@@ -7,11 +7,16 @@ import pytest
 
 from src.preprocessing.cleaning import (
     DEFAULT_LEAKAGE_COLUMNS,
+    MODEL_1_EXCLUDED_COLUMNS,
+    MODEL_1_OPERATIONAL_FEATURES,
+    MODEL_1_TARGET,
     build_numeric_preprocessor,
     chronological_train_test_split,
+    get_model_1_xy,
     normalize_column_names,
     parse_timestamp_column,
     select_classification_features,
+    select_model_1_features,
 )
 
 
@@ -70,3 +75,47 @@ def test_build_numeric_preprocessor_is_unfitted_until_training() -> None:
 
     with pytest.raises(Exception):
         preprocessor.transform(pd.DataFrame({"SoC": [0.5]}))
+
+
+def test_model_1_selection_uses_the_exact_approved_feature_allowlist() -> None:
+    dataframe = pd.DataFrame(
+        {
+            **{feature: [index] for index, feature in enumerate(MODEL_1_OPERATIONAL_FEATURES)},
+            "Timestamp": pd.to_datetime(["2024-01-01"]),
+            MODEL_1_TARGET: [1],
+            "Maintenance_Type": [2],
+            "RUL": [50],
+            "TTF": [30],
+            "Component_Health_Score": [0.7],
+            "Undocumented_Future_Column": [999],
+        }
+    )
+
+    features, target = get_model_1_xy(dataframe)
+
+    assert features.columns.tolist() == list(MODEL_1_OPERATIONAL_FEATURES)
+    assert features.shape[1] == 24
+    assert MODEL_1_TARGET not in features
+    assert set(MODEL_1_EXCLUDED_COLUMNS).isdisjoint(features.columns)
+    assert "Undocumented_Future_Column" not in features
+    assert target.tolist() == [1]
+
+
+def test_model_1_selection_does_not_mutate_source_data() -> None:
+    dataframe = pd.DataFrame(
+        {
+            **{feature: [0.5, 0.8] for feature in MODEL_1_OPERATIONAL_FEATURES},
+            "Timestamp": pd.to_datetime(["2024-01-01 00:00:00", "2024-01-01 00:15:00"]),
+            MODEL_1_TARGET: [0, 1],
+            "Maintenance_Type": [0, 1],
+            "RUL": [100, 99],
+            "TTF": [80, 79],
+            "Component_Health_Score": [0.9, 0.8],
+        }
+    )
+    original = dataframe.copy(deep=True)
+
+    features = select_model_1_features(dataframe)
+    features.iloc[0, 0] = -1
+
+    pd.testing.assert_frame_equal(dataframe, original)

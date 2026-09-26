@@ -1,4 +1,4 @@
-# EV Predictive Maintenance AI
+# PREDICTIVE MAINTENANCE - ML
 
 A beginner-friendly machine-learning project that uses EV sensor data to
 support predictive-maintenance analysis. The project focuses on a repeatable
@@ -14,9 +14,9 @@ train and evaluate a model.
 | --- | --- |
 | Dataset inspection | Complete |
 | Data preprocessing | Complete |
-| Exploratory data analysis (EDA) | Next |
-| Target selection | Pending |
-| Model training and evaluation | Pending |
+| Exploratory data analysis (EDA) | Complete |
+| Target selection | Complete: `Failure_Probability` |
+| Model training and evaluation | Model 1 baseline complete |
 
 The current dataset contains 175,393 records and 30 columns. The first
 preprocessing run found no missing values and no exact duplicate rows.
@@ -71,20 +71,19 @@ Outputs:
 - `data/processed/ev_predictive_maintenance_cleaned.csv`
 - `reports/metrics/preprocessing_report.json`
 
-## Next step: EDA and target selection
+## Model 1 baseline
 
-Create an exploratory notebook in `notebooks/eda/` using the cleaned data.
-The notebook should examine distributions, sensor relationships, and the
-possible prediction targets:
+Model 1 predicts `Failure_Probability`, where 0 means No Failure and 1 means Failure. It uses the fixed 24-column operational feature set and a chronological 80/20 split. The first baseline compares a majority-class reference with balanced Logistic Regression. See `reports/05_Baseline_Model_Report.md` for the full test-set evaluation.
 
-- `failure_probability`
-- `maintenance_type`
-- `rul` (remaining useful life)
-- `ttf` (time to failure)
-- `component_health_score`
+Run the baseline from the project root:
 
-Choose one target before training. For example, predicting `rul` is a
-regression task, while predicting `maintenance_type` is a classification task.
+```powershell
+python scripts/train_baseline.py
+```
+
+## Earlier planning notes
+
+Model 2 will later treat `Maintenance_Type` as a multiclass target, but it has not started. `RUL`, `TTF`, and `Component_Health_Score` remain excluded from Model 1 because they may leak post-outcome or future information.
 
 ## Collaboration workflow
 

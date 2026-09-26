@@ -1,17 +1,15 @@
-"""Placeholder script for future baseline training.
-
-The user requested that we do not build the ML model yet. This script is
-kept only as a planned entry point so the project structure is ready when
-training begins.
-"""
+"""Run the approved Model 1 Logistic Regression baseline from the project root."""
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 
-def main() -> None:
-    """Print a clear message instead of training a model."""
-    print("Baseline training is not implemented yet. Inspect and preprocess the dataset first.")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.training.train import main
 
 if __name__ == "__main__":
     main()
