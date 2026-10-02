@@ -15,8 +15,9 @@ train and evaluate a model.
 | Dataset inspection | Complete |
 | Data preprocessing | Complete |
 | Exploratory data analysis (EDA) | Complete |
-| Target selection | Complete: `Failure_Probability` |
+| Target selection | Complete: Models 1 and 2 |
 | Model training and evaluation | Model 1 baseline complete |
+| Model 2 signal investigation | Complete; no classifier trained |
 
 The current dataset contains 175,393 records and 30 columns. The first
 preprocessing run found no missing values and no exact duplicate rows.
@@ -81,9 +82,9 @@ Run the baseline from the project root:
 python scripts/train_baseline.py
 ```
 
-## Earlier planning notes
+## Model 2 status
 
-Model 2 will later treat `Maintenance_Type` as a multiclass target, but it has not started. `RUL`, `TTF`, and `Component_Health_Score` remain excluded from Model 1 because they may leak post-outcome or future information.
+Model 2 uses `Maintenance_Type`: 0 = None, 1 = Preventive, 2 = Corrective, and 3 = Predictive. Its signal investigation uses the same fixed 24 operational features as Model 1 and excludes `Timestamp`, `Failure_Probability`, `RUL`, `TTF`, and `Component_Health_Score` to avoid leakage. See `reports/07_Maintenance_Type_Signal_Analysis.md` before authorizing a multiclass baseline.
 
 ## Collaboration workflow
 

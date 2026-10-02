@@ -8,6 +8,7 @@ import pytest
 from src.preprocessing.validation import (
     dataset_quality_summary,
     ensure_binary_target,
+    ensure_target_classes,
     ensure_valid_timestamps,
 )
 
@@ -24,6 +25,17 @@ def test_ensure_binary_target_rejects_non_binary_values() -> None:
 def test_ensure_binary_target_rejects_missing_values() -> None:
     with pytest.raises(ValueError, match="contains missing"):
         ensure_binary_target(pd.DataFrame({"target": [0, 1, None]}), "target")
+
+
+def test_ensure_target_classes_accepts_the_documented_maintenance_codes() -> None:
+    ensure_target_classes(
+        pd.DataFrame({"target": [0, 1, 2, 3]}), "target", {0, 1, 2, 3}
+    )
+
+
+def test_ensure_target_classes_rejects_undocumented_codes() -> None:
+    with pytest.raises(ValueError, match="must contain"):
+        ensure_target_classes(pd.DataFrame({"target": [0, 1, 2, 4]}), "target", {0, 1, 2, 3})
 
 
 def test_ensure_valid_timestamps_rejects_duplicates() -> None:

@@ -34,6 +34,22 @@ def ensure_binary_target(dataframe: pd.DataFrame, target_column: str) -> None:
         )
 
 
+def ensure_target_classes(
+    dataframe: pd.DataFrame, target_column: str, expected_classes: set[int]
+) -> None:
+    """Raise an error unless a multiclass target has the documented classes."""
+    ensure_columns_exist(dataframe, [target_column])
+    if dataframe[target_column].isna().any():
+        raise ValueError(f"Target column '{target_column}' contains missing values.")
+
+    values = set(dataframe[target_column].unique())
+    if values != expected_classes:
+        raise ValueError(
+            f"Target column '{target_column}' must contain {sorted(expected_classes)}; "
+            f"found {sorted(values)}."
+        )
+
+
 def ensure_valid_timestamps(dataframe: pd.DataFrame, timestamp_column: str = "Timestamp") -> None:
     """Raise an error for missing, non-datetime, duplicate, or unsorted timestamps."""
     ensure_columns_exist(dataframe, [timestamp_column])

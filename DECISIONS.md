@@ -12,6 +12,10 @@
   - 0 = No Failure.
   - 1 = Failure.
 - Model 2 target: `Maintenance_Type` as a multiclass classification task.
+  - 0 = None.
+  - 1 = Preventive.
+  - 2 = Corrective.
+  - 3 = Predictive.
 
 ## Model 1 feature policy
 
@@ -25,7 +29,14 @@
 - The approved baseline is `LogisticRegression(class_weight="balanced", solver="lbfgs", max_iter=1000, random_state=42)`.
 - It uses median imputation and `StandardScaler` inside a scikit-learn pipeline fitted on the chronological training partition only.
 - It is compared with `DummyClassifier(strategy="most_frequent")` on the untouched chronological test partition.
-- No SMOTE, threshold tuning, hyperparameter tuning, feature engineering, advanced model, or Model 2 work is approved without a later explicit decision.
+- No SMOTE, threshold tuning, hyperparameter tuning, feature engineering, or advanced Model 1 model is approved without a later explicit decision.
+
+## Model 2 feature policy
+
+- Model 2 uses the same fixed 24 operational columns as Model 1.
+- Exclude `Timestamp`, `Maintenance_Type`, `Failure_Probability`, `RUL`, `TTF`, and `Component_Health_Score`.
+- Preserve the chronological 80/20 split. Do not shuffle records.
+- Do not train a Model 2 classifier until the Model 2 signal investigation is reviewed and a later decision authorizes a baseline.
 
 ## Open items
 

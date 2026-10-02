@@ -21,11 +21,26 @@ DEFAULT_LEAKAGE_COLUMNS = (
 )
 
 MODEL_1_TARGET = "Failure_Probability"
+MODEL_2_TARGET = "Maintenance_Type"
 MODEL_1_EXCLUDED_COLUMNS = (
     "Timestamp",
     MODEL_1_TARGET,
     *DEFAULT_LEAKAGE_COLUMNS,
 )
+MODEL_2_EXCLUDED_COLUMNS = (
+    "Timestamp",
+    MODEL_2_TARGET,
+    MODEL_1_TARGET,
+    "RUL",
+    "TTF",
+    "Component_Health_Score",
+)
+MODEL_2_CLASS_LABELS = {
+    0: "None",
+    1: "Preventive",
+    2: "Corrective",
+    3: "Predictive",
+}
 MODEL_1_OPERATIONAL_FEATURES = (
     "SoC",
     "SoH",
@@ -169,6 +184,19 @@ def get_model_1_xy(dataframe: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
         raise ValueError(f"Missing Model 1 target column: {MODEL_1_TARGET}")
 
     return select_model_1_features(dataframe), dataframe[MODEL_1_TARGET].copy()
+
+
+def get_model_2_xy(dataframe: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    """Return Model 2 inputs and the maintenance-type target without fitting data.
+
+    Model 2 uses the same fixed operational allowlist as Model 1. Its target,
+    the Model 1 target, timestamp, and the known leakage-prone fields are kept
+    out of ``X`` by the allowlist rather than removed from the raw dataframe.
+    """
+    if MODEL_2_TARGET not in dataframe.columns:
+        raise ValueError(f"Missing Model 2 target column: {MODEL_2_TARGET}")
+
+    return select_model_1_features(dataframe), dataframe[MODEL_2_TARGET].copy()
 
 
 def chronological_train_test_split(

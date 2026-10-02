@@ -11,10 +11,16 @@ The project uses the EVIoT-PredictiveMaint Dataset from Kaggle. The raw CSV rema
 
 ## Model 1 current stage
 
-Feature selection is complete. Model 1 uses the fixed 24-column operational allowlist in `src/preprocessing/cleaning.py`. It excludes `Timestamp`, `Failure_Probability`, `Maintenance_Type`, `RUL`, `TTF`, and `Component_Health_Score`.
+Model 1 is documented and paused. It uses the fixed 24-column operational allowlist in `src/preprocessing/cleaning.py`. It excludes `Timestamp`, `Failure_Probability`, `Maintenance_Type`, `RUL`, `TTF`, and `Component_Health_Score`.
 
-The time series retains the chronological earliest-80% / latest-20% split. The first Logistic Regression baseline has been trained and evaluated once on the untouched test partition. No feature engineering, resampling, tuning, threshold changes, or advanced model has been attempted.
+The time series retains the chronological earliest-80% / latest-20% split. The first Logistic Regression baseline and a failure-signal investigation are documented. No feature engineering, resampling, tuning, threshold changes, or advanced model has been attempted.
+
+## Model 2 current stage
+
+The Model 2 target is `Maintenance_Type`: 0 = None, 1 = Preventive, 2 = Corrective, and 3 = Predictive. Its signal investigation uses the same fixed 24-column operational allowlist. It excludes `Timestamp`, `Maintenance_Type`, `Failure_Probability`, `RUL`, `TTF`, and `Component_Health_Score`.
+
+No Model 2 classifier has been trained. The signal investigation must be reviewed before any multiclass baseline is authorized.
 
 ## Next approved stage
 
-Review the baseline report and explicitly approve any next experiment. Do not start Model 2 or improve Model 1 without approval.
+Review the Model 2 signal report and explicitly approve any next experiment. Do not improve Model 1 or train Model 2 without approval.
