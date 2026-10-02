@@ -43,6 +43,14 @@ reports/figures/*
 reports/metrics/*
 !reports/figures/.gitkeep
 !reports/metrics/.gitkeep
+# Publish the completed signal-investigation figures with their reports.
+!reports/figures/failure_signal_group_medians.png
+!reports/figures/failure_signal_binned_rates.png
+!reports/figures/failure_signal_temporal_patterns.png
+!reports/figures/maintenance_type_class_distribution.png
+!reports/figures/maintenance_type_class_medians.png
+!reports/figures/maintenance_type_binned_class_rates.png
+!reports/figures/maintenance_type_temporal_patterns.png
 
 # Logs and outputs
 logs/*

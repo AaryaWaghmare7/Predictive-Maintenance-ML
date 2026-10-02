@@ -115,7 +115,10 @@ a Random Forest experiment. Its saved validation results are ROC-AUC 0.502
 and Average Precision 0.099. It uses an earlier/later validation split within
 the training partition; these are validation results, not final test results.
 The notebook and its saved outputs are retained as completed experimental
-work. No additional training is part of repository synchronization.
+work. Its dataset path is resolved relative to the repository on both macOS
+and Windows. It expects the local processed CSV listed in the preprocessing
+section, which must be generated separately from the original raw CSV.
+No additional training is part of repository synchronization.
 
 For reference, the existing baseline entry point is:
 
@@ -129,6 +132,10 @@ Model 2 uses `Maintenance_Type`: 0 = None, 1 = Preventive, 2 = Corrective, and 3
 
 The investigation found extremely weak signal. No Model 2 classifier has been
 trained. Dataset 2 has not started.
+
+The completed Model 1 and Model 2 signal plots in `reports/figures/` are tracked
+alongside their reports. Other generated data, metrics, and model artifacts
+remain local and ignored by Git.
 
 ## Collaboration workflow
 
