@@ -37,7 +37,7 @@ def test_parse_timestamp_column_preserves_name_and_parses_values() -> None:
     cleaned = parse_timestamp_column(dataframe)
 
     assert str(cleaned["Timestamp"].dtype).startswith("datetime64")
-    assert dataframe["Timestamp"].dtype == object
+    assert dataframe["Timestamp"].iloc[0] == "2024-01-01 00:00:00"
 
 
 def test_select_classification_features_excludes_target_time_and_leakage() -> None:
