@@ -31,8 +31,12 @@ data/processed/*
 !data/processed/.gitkeep
 
 # Model artifacts
-/models/
+/models/*
 !/models/.gitkeep
+# Publish only approved Experiment 2 metadata, not the fitted model binary.
+!/models/experiment_2/
+/models/experiment_2/*
+!/models/experiment_2/metadata.json
 *.pkl
 *.joblib
 *.h5
@@ -51,6 +55,23 @@ reports/metrics/*
 !reports/figures/maintenance_type_class_medians.png
 !reports/figures/maintenance_type_binned_class_rates.png
 !reports/figures/maintenance_type_temporal_patterns.png
+# Approved Experiment 2 report figures and aggregate statistical snapshots.
+!reports/figures/experiment_2/
+reports/figures/experiment_2/*
+!reports/figures/experiment_2/class_distribution.png
+!reports/figures/experiment_2/class_separation.png
+!reports/figures/experiment_2/feature_associations.png
+!reports/figures/experiment_2/feature_histograms.png
+!reports/figures/experiment_2/feature_importance.png
+!reports/figures/experiment_2/features_by_class.png
+!reports/figures/experiment_2/sensor_correlation.png
+!reports/figures/experiment_2/test_confusion_matrices.png
+!reports/metrics/experiment_2/
+reports/metrics/experiment_2/*
+!reports/metrics/experiment_2/audit.json
+!reports/metrics/experiment_2/model_comparison.json
+!reports/metrics/experiment_2/selection_before_test.json
+!reports/metrics/experiment_2/signal.json
 
 # Logs and outputs
 logs/*

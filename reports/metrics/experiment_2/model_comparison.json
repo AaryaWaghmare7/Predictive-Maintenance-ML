@@ -1,0 +1,549 @@
+{
+  "selected_model": "random_forest",
+  "final_training_impurity_importance": {
+    "Voltage (V)": 0.35775306295708453,
+    "Current (A)": 0.11176185939537503,
+    "Motor Speed (RPM)": 0.06033443999495099,
+    "Temperature (°C)": 0.1768968043514313,
+    "Vibration (g)": 0.28654639866670245,
+    "Ambient Temp (°C)": 0.003568670438320686,
+    "Humidity (%)": 0.00313876419613514
+  },
+  "selection_criterion": "highest mean training-only 5-fold macro F1",
+  "feature_order": [
+    "Voltage (V)",
+    "Current (A)",
+    "Motor Speed (RPM)",
+    "Temperature (°C)",
+    "Vibration (g)",
+    "Ambient Temp (°C)",
+    "Humidity (%)"
+  ],
+  "target_mapping": {
+    "0": "Normal",
+    "1": "Motor Fault",
+    "2": "Inverter Fault",
+    "3": "Battery Fault"
+  },
+  "input_scale": "normalized [0,1]; original normalization formula unknown",
+  "split": "supplied 7700 training / 3300 testing; no new train_test_split",
+  "raw_sha256": {
+    "full": "58892b061bbd314df4161ce52dffa51f8a2bdabe1074fb12a867ce7fdbce3ac0",
+    "training": "858d2bd5ad59754a7ad4e9b510bb4adce67627b8a672e828429e8e7b11017d64",
+    "testing": "49c0f7f940e0cc6018fed5fa6c76cbf747ca3e9e50702ac1400a8ec1c755ab2c"
+  },
+  "selection": {
+    "selected_model": "random_forest",
+    "best_tree": "random_forest",
+    "cv": {
+      "logistic_regression": {
+        "accuracy": {
+          "mean": 0.9823376623376623,
+          "std": 0.0037052837968018604,
+          "folds": [
+            0.9759740259740259,
+            0.987012987012987,
+            0.9844155844155844,
+            0.9811688311688311,
+            0.9831168831168832
+          ]
+        },
+        "roc_auc_ovr": {
+          "mean": 0.999280640589569,
+          "std": 0.00014760552232429016,
+          "folds": [
+            0.9989995748299321,
+            0.9994043367346939,
+            0.9993979591836735,
+            0.9993066893424036,
+            0.9992946428571428
+          ]
+        },
+        "precision_macro": {
+          "mean": 0.9771574595519509,
+          "std": 0.005409473078931698,
+          "folds": [
+            0.9678929390645258,
+            0.9842161914172783,
+            0.9792227657892894,
+            0.9754416993381548,
+            0.979013702150506
+          ]
+        },
+        "recall_macro": {
+          "mean": 0.9775357142857144,
+          "std": 0.003980821369455122,
+          "folds": [
+            0.9707142857142856,
+            0.9821428571428572,
+            0.9796428571428571,
+            0.9757142857142858,
+            0.9794642857142858
+          ]
+        },
+        "f1_macro": {
+          "mean": 0.9772560711193407,
+          "std": 0.004769509862317658,
+          "folds": [
+            0.9690533828397888,
+            0.9831649332548613,
+            0.9793862279397125,
+            0.9754682249283897,
+            0.9792075866339511
+          ]
+        }
+      },
+      "random_forest": {
+        "accuracy": {
+          "mean": 0.995974025974026,
+          "std": 0.0010389610389610366,
+          "folds": [
+            0.9948051948051948,
+            0.9967532467532467,
+            0.9961038961038962,
+            0.9948051948051948,
+            0.9974025974025974
+          ]
+        },
+        "roc_auc_ovr": {
+          "mean": 0.9998380810657597,
+          "std": 5.8114784968483056e-05,
+          "folds": [
+            0.9998125708616781,
+            0.9999011479591837,
+            0.9997470238095238,
+            0.9998292233560091,
+            0.9999004393424036
+          ]
+        },
+        "precision_macro": {
+          "mean": 0.9946798766426674,
+          "std": 0.0012608020888237802,
+          "folds": [
+            0.9930555555555556,
+            0.995563904019594,
+            0.9947552447552448,
+            0.9935458056435058,
+            0.9964788732394366
+          ]
+        },
+        "recall_macro": {
+          "mean": 0.9944642857142856,
+          "std": 0.0014285714285714236,
+          "folds": [
+            0.9928571428571429,
+            0.9955357142857143,
+            0.9946428571428572,
+            0.9928571428571429,
+            0.9964285714285714
+          ]
+        },
+        "f1_macro": {
+          "mean": 0.9945147700330808,
+          "std": 0.0013740980123155032,
+          "folds": [
+            0.9928556848336395,
+            0.9955355861615925,
+            0.9946422420941179,
+            0.9931119478725225,
+            0.9964283892035308
+          ]
+        }
+      },
+      "hist_gradient_boosting": {
+        "accuracy": {
+          "mean": 0.9954545454545455,
+          "std": 0.0004106854104114955,
+          "folds": [
+            0.9948051948051948,
+            0.9961038961038962,
+            0.9954545454545455,
+            0.9954545454545455,
+            0.9954545454545455
+          ]
+        },
+        "roc_auc_ovr": {
+          "mean": 0.9998459467120181,
+          "std": 3.308747177337441e-05,
+          "folds": [
+            0.9998540249433107,
+            0.9998292233560091,
+            0.999827806122449,
+            0.999812216553288,
+            0.999906462585034
+          ]
+        },
+        "precision_macro": {
+          "mean": 0.9938140232115931,
+          "std": 0.000546055042965325,
+          "folds": [
+            0.9929687101219947,
+            0.9946927944478465,
+            0.9938277511961722,
+            0.9938277511961722,
+            0.9937531090957793
+          ]
+        },
+        "recall_macro": {
+          "mean": 0.99375,
+          "std": 0.00056469243931578,
+          "folds": [
+            0.9928571428571429,
+            0.9946428571428572,
+            0.99375,
+            0.99375,
+            0.99375
+          ]
+        },
+        "f1_macro": {
+          "mean": 0.9937495780191499,
+          "std": 0.000564865365893596,
+          "folds": [
+            0.9928563227921572,
+            0.9946425838052962,
+            0.9937495017141035,
+            0.9937495017141035,
+            0.9937499800700895
+          ]
+        }
+      }
+    }
+  },
+  "test_results": {
+    "logistic_regression": {
+      "accuracy": 0.980909090909091,
+      "macro_precision": 0.9742490016818875,
+      "macro_recall": 0.9764999999999999,
+      "macro_f1": 0.9753242915053469,
+      "roc_auc_macro_ovr": 0.9991907407407408,
+      "confusion_matrix": [
+        [
+          1489,
+          0,
+          11,
+          0
+        ],
+        [
+          0,
+          600,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          566,
+          34
+        ],
+        [
+          1,
+          0,
+          17,
+          582
+        ]
+      ],
+      "per_class": {
+        "0": {
+          "precision": 0.9993288590604027,
+          "recall": 0.9926666666666667,
+          "f1-score": 0.9959866220735786,
+          "support": 1500.0
+        },
+        "1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 600.0
+        },
+        "2": {
+          "precision": 0.9528619528619529,
+          "recall": 0.9433333333333334,
+          "f1-score": 0.948073701842546,
+          "support": 600.0
+        },
+        "3": {
+          "precision": 0.9448051948051948,
+          "recall": 0.97,
+          "f1-score": 0.9572368421052632,
+          "support": 600.0
+        },
+        "accuracy": 0.980909090909091,
+        "macro avg": {
+          "precision": 0.9742490016818875,
+          "recall": 0.9764999999999999,
+          "f1-score": 0.9753242915053469,
+          "support": 3300.0
+        },
+        "weighted avg": {
+          "precision": 0.9810889627851189,
+          "recall": 0.980909090909091,
+          "f1-score": 0.9809594725694101,
+          "support": 3300.0
+        }
+      }
+    },
+    "random_forest": {
+      "accuracy": 0.9942424242424243,
+      "macro_precision": 0.9922778285901738,
+      "macro_recall": 0.9920833333333332,
+      "macro_f1": 0.9920817441833812,
+      "roc_auc_macro_ovr": 0.9996980709876544,
+      "confusion_matrix": [
+        [
+          1500,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          600,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          599,
+          1
+        ],
+        [
+          0,
+          0,
+          18,
+          582
+        ]
+      ],
+      "per_class": {
+        "0": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 1500.0
+        },
+        "1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 600.0
+        },
+        "2": {
+          "precision": 0.9708265802269044,
+          "recall": 0.9983333333333333,
+          "f1-score": 0.9843878389482333,
+          "support": 600.0
+        },
+        "3": {
+          "precision": 0.9982847341337907,
+          "recall": 0.97,
+          "f1-score": 0.9839391377852916,
+          "support": 600.0
+        },
+        "accuracy": 0.9942424242424243,
+        "macro avg": {
+          "precision": 0.9922778285901738,
+          "recall": 0.9920833333333332,
+          "f1-score": 0.9920817441833812,
+          "support": 3300.0
+        },
+        "weighted avg": {
+          "precision": 0.9943838753383082,
+          "recall": 0.9942424242424243,
+          "f1-score": 0.9942412684970046,
+          "support": 3300.0
+        }
+      }
+    },
+    "hist_gradient_boosting": {
+      "accuracy": 0.9933333333333333,
+      "macro_precision": 0.9909297052154196,
+      "macro_recall": 0.9908333333333333,
+      "macro_f1": 0.9908324165749908,
+      "roc_auc_macro_ovr": 0.9997587962962963,
+      "confusion_matrix": [
+        [
+          1500,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          600,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          595,
+          5
+        ],
+        [
+          0,
+          0,
+          17,
+          583
+        ]
+      ],
+      "per_class": {
+        "0": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 1500.0
+        },
+        "1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 600.0
+        },
+        "2": {
+          "precision": 0.9722222222222222,
+          "recall": 0.9916666666666667,
+          "f1-score": 0.9818481848184818,
+          "support": 600.0
+        },
+        "3": {
+          "precision": 0.9914965986394558,
+          "recall": 0.9716666666666667,
+          "f1-score": 0.9814814814814815,
+          "support": 600.0
+        },
+        "accuracy": 0.9933333333333333,
+        "macro avg": {
+          "precision": 0.9909297052154196,
+          "recall": 0.9908333333333333,
+          "f1-score": 0.9908324165749908,
+          "support": 3300.0
+        },
+        "weighted avg": {
+          "precision": 0.9934034219748507,
+          "recall": 0.9933333333333333,
+          "f1-score": 0.9933326665999933,
+          "support": 3300.0
+        }
+      }
+    }
+  },
+  "feature_importance": {
+    "model": "random_forest",
+    "validation_rows": 1540,
+    "permutation_macro_f1_drop": {
+      "Voltage (V)": {
+        "mean": 0.43193311195340167,
+        "std": 0.01676414478016362
+      },
+      "Current (A)": {
+        "mean": 0.1335825455687857,
+        "std": 0.00817575092567994
+      },
+      "Motor Speed (RPM)": {
+        "mean": 0.02217307477089734,
+        "std": 0.0033235533023944913
+      },
+      "Temperature (°C)": {
+        "mean": 0.06412222753895214,
+        "std": 0.007031443218277813
+      },
+      "Vibration (g)": {
+        "mean": 0.25576848024626575,
+        "std": 0.00817004323958373
+      },
+      "Ambient Temp (°C)": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "Humidity (%)": {
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    "impurity_importance": {
+      "Voltage (V)": 0.3588314191061755,
+      "Current (A)": 0.11859028914909878,
+      "Motor Speed (RPM)": 0.05357296469137573,
+      "Temperature (°C)": 0.1763210178385909,
+      "Vibration (g)": 0.28604072193539626,
+      "Ambient Temp (°C)": 0.0035542659471066154,
+      "Humidity (%)": 0.0030893213322561158
+    }
+  },
+  "configurations": {
+    "logistic_regression": {
+      "C": 1.0,
+      "class_weight": "balanced",
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 2000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 42,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "random_forest": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "class_weight": "balanced",
+      "criterion": "gini",
+      "max_depth": null,
+      "max_features": "sqrt",
+      "max_leaf_nodes": null,
+      "max_samples": null,
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 1,
+      "min_samples_split": 2,
+      "min_weight_fraction_leaf": 0.0,
+      "monotonic_cst": null,
+      "n_estimators": 200,
+      "n_jobs": -1,
+      "oob_score": false,
+      "random_state": 42,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "hist_gradient_boosting": {
+      "categorical_features": "from_dtype",
+      "class_weight": null,
+      "early_stopping": false,
+      "interaction_cst": null,
+      "l2_regularization": 1.0,
+      "learning_rate": 0.1,
+      "loss": "log_loss",
+      "max_bins": 255,
+      "max_depth": null,
+      "max_features": 1.0,
+      "max_iter": 150,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 20,
+      "monotonic_cst": null,
+      "n_iter_no_change": 10,
+      "random_state": 42,
+      "scoring": "loss",
+      "tol": 1e-07,
+      "validation_fraction": 0.1,
+      "verbose": 0,
+      "warm_start": false
+    }
+  },
+  "versions": {
+    "python": "3.13.9",
+    "scikit_learn": "1.7.2",
+    "pandas": "2.3.3",
+    "numpy": "2.3.5",
+    "joblib": "1.5.2"
+  },
+  "optional_dependencies": {
+    "xgboost": false,
+    "shap": false
+  },
+  "inference_round_trip_verified": true,
+  "raw_hashes_unchanged": true
+}
