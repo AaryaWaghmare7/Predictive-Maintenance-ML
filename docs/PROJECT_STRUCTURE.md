@@ -1,14 +1,17 @@
 # Project Structure
 
-This repository is organized for a beginner-friendly machine-learning workflow.
-The current goal is only to prepare the structure. The model is not built yet.
+The existing repository supports two preserved ML experiments and a localhost
+application. Experiment 1 is retained as a weak-signal experiment; Experiment 2
+provides proof-of-concept NEV fault diagnosis. RUL has contracts only.
 
 ## Root Files
 
 - `README.md` explains the project goal, setup, and how to use the repository.
+- `PROJECT_PLAN.md` and `DECISIONS.md` record scope, evidence and approval boundaries.
 - `AGENTS.md` gives Codex project-specific instructions.
 - `requirements.txt` lists Python packages needed for development.
-- `.gitignore` prevents large datasets, model artifacts, caches, and local settings from being committed.
+- `.gitignore` excludes datasets, other model artifacts, caches and private
+  settings, with an explicit exception for the small approved NEV inference pipeline.
 
 ## Configuration
 
@@ -21,13 +24,16 @@ The current goal is only to prepare the structure. The model is not built yet.
 - `data/external/` stores third-party reference data that is not the main dataset.
 - `data/interim/` stores temporary intermediate files created during preprocessing.
 - `data/processed/` stores cleaned datasets ready for modeling.
+- `data/rul/` reserves a location for a manually approved degradation dataset;
+  none is selected.
 
 Large data files are ignored by Git so the repository stays lightweight.
 
 ## Notebook Folders
 
 - `notebooks/eda/` is for exploratory data analysis notebooks.
-- `notebooks/modeling/` is for future model experiments after the dataset is understood.
+- `notebooks/preprocessing/` documents preprocessing.
+- `notebooks/modeling/` retains model experiments and their recorded outputs.
 
 ## Source Code Folders
 
@@ -35,24 +41,39 @@ Large data files are ignored by Git so the repository stays lightweight.
 - `src/preprocessing/` cleans and validates raw data.
 - `src/eda/` creates summaries that help us understand the dataset.
 - `src/features/` will contain feature engineering code.
-- `src/training/` is reserved for future training scripts.
-- `src/evaluation/` will contain accuracy, error, and model-quality checks.
+- `src/training/` implements the existing baseline and NEV training workflows;
+  the application never calls them.
+- `src/evaluation/` contains metrics and model-quality checks.
 - `src/storage/` defines where trained model files will be saved and loaded.
-- `src/prediction/` is reserved for future prediction code.
-- `src/api/` is reserved for eventual web/API deployment.
+- `src/prediction/` performs shared saved-model inference in canonical feature order.
+- `src/api/` contains FastAPI endpoints, strict request/response schemas and CSV validation.
+- `src/api/static/` contains the plain HTML/CSS/JavaScript localhost dashboard.
+- `src/rul/` contains future component-model contracts, not a fitted RUL model.
 - `src/utils/` is for shared helper functions.
 - `src/visualization/` is for reusable plotting functions.
 
 ## Script Folders
 
 - `scripts/inspect_dataset.py` prints dataset shape, columns, preview rows, and missing values.
-- `scripts/train_baseline.py` is only a placeholder right now. It does not train a model yet.
+- `scripts/train_baseline.py` is the completed Experiment 1 baseline entry point.
+- `scripts/analyze_failure_signal.py` and `scripts/analyze_maintenance_type_signal.py`
+  run the existing Experiment 1 investigations.
+- `scripts/run_nev_experiment.py` reproduces Experiment 2, including training;
+  **do not run it merely to start the application**.
+- `scripts/smoke_test_nev_inference.py` verifies the existing saved model
+  without fitting anything.
+- `scripts/smoke_test_localhost.py` checks the running API/dashboard assets,
+  all four supplied examples, invalid inputs and CSV upload over HTTP.
 
 ## Output Folders
 
-- `models/` will store trained model artifacts later.
-- `reports/figures/` will store EDA and model plots.
-- `reports/metrics/` will store model evaluation results later.
+- `models/experiment_2/` stores the intentionally tracked NEV inference pipeline,
+  unchanged model metadata and its artifact/checksum documentation.
+- `models/rul/` reserves space for future RUL artifacts; none is trained.
+- `reports/figures/` stores EDA and model plots.
+- `reports/metrics/` stores model evaluation/statistical snapshots.
+- `reports/11_RUL_Dataset_Requirements.md` records manual dataset-approval requirements.
+- `reports/rul/` reserves space for future RUL evidence.
 - `outputs/predictions/` will store future prediction files.
 - `logs/` will store runtime logs if needed.
 
@@ -61,7 +82,13 @@ Large data files are ignored by Git so the repository stays lightweight.
 - `tests/data/` is for dataset-loading tests.
 - `tests/preprocessing/` is for cleaning and validation tests.
 - `tests/features/` is for feature engineering tests.
-- `tests/models/` is for future model tests.
+- `tests/models/` is for model tests.
 - `tests/evaluation/` is for metric tests.
 - `tests/prediction/` is for prediction tests.
-- `tests/api/` is for future API tests.
+- `tests/api/` checks health, prediction validation, CSV upload and dashboard assets.
+
+API fixtures fit tiny synthetic classifiers in temporary directories; they do
+not regenerate the production NEV artifact. Integration tests require the
+tracked NEV pipeline and matching dependency versions. Raw data and other
+fitted binaries stay Git-ignored. See `MODULAR_ARCHITECTURE.md` for model-routing
+and coverage limits.

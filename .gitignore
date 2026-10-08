@@ -29,18 +29,27 @@ data/processed/*
 !data/external/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
+# RUL is scaffolded only; future datasets stay local.
+data/rul/*
+!data/rul/README.md
 
 # Model artifacts
 /models/*
 !/models/.gitkeep
-# Publish only approved Experiment 2 metadata, not the fitted model binary.
+# Explicit collaboration exception: metadata plus the small trusted inference artifact.
 !/models/experiment_2/
 /models/experiment_2/*
 !/models/experiment_2/metadata.json
+!/models/rul/
+/models/rul/*
+!/models/rul/README.md
 *.pkl
 *.joblib
 *.h5
 *.onnx
+# Keep all other binaries ignored; this 2.60 MiB artifact is required by the MVP.
+!/models/experiment_2/nev_fault_pipeline.joblib
+!/models/experiment_2/INFERENCE_ARTIFACT.md
 
 # Reports
 reports/figures/*

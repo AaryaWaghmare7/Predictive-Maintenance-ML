@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EV Predictive Maintenance Platform</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Localhost proof of concept</p>
+      <h1>EV Predictive Maintenance Platform</h1>
+      <p>Fault diagnosis from normalized sensor observations. RUL and risk scoring are not connected.</p>
+      <p id="model-status" class="model-status" role="status">Checking saved model…</p>
+    </header>
+
+    <aside class="warning">
+      <strong>Prototype mode: inputs are normalized values approximately in [0,1].</strong>
+      <p>Original physical-unit normalization parameters are unknown. Do not enter raw volts, amps, RPM or temperatures.</p>
+      <p>Model confidence is an uncalibrated class probability, not a real-world failure probability or a safety rating. No temporal, cross-vehicle or equivalent OEM performance is established.</p>
+    </aside>
+
+    <section class="card" aria-labelledby="fault-heading">
+      <h2 id="fault-heading">Fault Diagnosis</h2>
+      <p>Analyze one independent normalized observation using the saved NEV Random Forest pipeline.</p>
+      <form id="fault-form">
+        <div class="input-grid">
+          <label for="voltage">Voltage<input id="voltage" name="Voltage (V)" type="number" min="0" max="1" step="any" required></label>
+          <label for="current">Current<input id="current" name="Current (A)" type="number" min="0" max="1" step="any" required></label>
+          <label for="motor-speed">Motor Speed<input id="motor-speed" name="Motor Speed (RPM)" type="number" min="0" max="1" step="any" required></label>
+          <label for="temperature">Temperature<input id="temperature" name="Temperature (°C)" type="number" min="0" max="1" step="any" required></label>
+          <label for="vibration">Vibration<input id="vibration" name="Vibration (g)" type="number" min="0" max="1" step="any" required></label>
+          <label for="ambient-temperature">Ambient Temperature<input id="ambient-temperature" name="Ambient Temp (°C)" type="number" min="0" max="1" step="any" required></label>
+          <label for="humidity">Humidity<input id="humidity" name="Humidity (%)" type="number" min="0" max="1" step="any" required></label>
+        </div>
+        <div class="actions">
+          <button id="analyze-button" type="submit" disabled>Analyze Vehicle</button>
+          <button id="example-button" type="button" class="secondary">Load synthetic example</button>
+        </div>
+        <p class="small">The example is synthetic, not an actual vehicle measurement. Every field uses the normalized dataset scale.</p>
+      </form>
+      <p id="fault-error" class="error" role="alert"></p>
+      <div id="fault-result" class="result" aria-live="polite" hidden>
+        <p class="eyebrow">Model diagnosis</p>
+        <h3 id="predicted-fault"></h3>
+        <dl>
+          <div><dt>Model confidence</dt><dd id="model-confidence"></dd></div>
+          <div><dt>Model status</dt><dd id="prediction-status"></dd></div>
+          <div><dt>Artifact version</dt><dd id="prediction-version"></dd></div>
+        </dl>
+        <p class="small">A “Normal” prediction is not a guarantee that a vehicle is healthy or safe to operate.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="csv-heading">
+      <h2 id="csv-heading">CSV Telemetry Upload</h2>
+      <p>Upload UTF-8 CSV with exactly the seven sensor columns below, in any order. No target, timestamp or vehicle-ID columns are accepted in this MVP.</p>
+      <pre class="headers">Voltage (V),Current (A),Motor Speed (RPM),Temperature (°C),Vibration (g),Ambient Temp (°C),Humidity (%)</pre>
+      <p class="small">Maximum 5 MiB and 20,000 rows. Every row is validated; invalid uploads are rejected in full. Uploads are not retained by the application. Predictions are independent observations, not a temporal sequence.</p>
+      <form id="csv-form">
+        <label for="telemetry-file">Normalized telemetry CSV<input id="telemetry-file" name="file" type="file" accept=".csv,text/csv" required></label>
+        <div class="actions"><button id="upload-button" type="submit" disabled>Analyze CSV</button><a id="download-example" class="button-link secondary" href="/static/synthetic_normalized_telemetry.csv" download>Download synthetic CSV example</a></div>
+      </form>
+      <p id="csv-error" class="error" role="alert"></p>
+      <div id="csv-result" aria-live="polite" hidden>
+        <div class="summary-grid">
+          <div><span>Rows analyzed</span><strong id="csv-rows"></strong></div>
+          <div><span>Mean model confidence</span><strong id="csv-confidence"></strong></div>
+          <div><span>Dominant abnormal label</span><strong id="csv-dominant"></strong></div>
+        </div>
+        <div class="table-scroll">
+          <table><caption>Class counts across all validated rows</caption><thead><tr><th>Fault class</th><th>Count</th><th>Percentage</th></tr></thead><tbody id="class-summary"></tbody></table>
+        </div>
+        <p id="row-limit-note" class="small"></p>
+        <details>
+          <summary>View row-level predictions</summary>
+          <div class="table-scroll"><table><thead><tr><th>Observation #</th><th>Predicted fault</th><th>Model confidence</th></tr></thead><tbody id="row-predictions"></tbody></table></div>
+        </details>
+      </div>
+    </section>
+
+    <div class="future-grid">
+      <section class="card future" aria-labelledby="rul-heading">
+        <h2 id="rul-heading">Remaining Useful Life</h2>
+        <p>RUL model not yet connected.</p>
+        <p class="small">Requires a separately approved degradation/time-to-failure dataset. NEV cannot provide a valid remaining-life estimate.</p>
+        <button type="button" disabled>Estimate RUL — unavailable</button>
+      </section>
+      <section class="card future" aria-labelledby="risk-heading">
+        <h2 id="risk-heading">Risk Assessment</h2>
+        <p>Risk scoring is disabled.</p>
+        <p class="small">No validated RUL/risk methodology is connected. Fault labels and model confidence are not converted into fabricated risk scores.</p>
+        <button type="button" disabled>Calculate risk — unavailable</button>
+      </section>
+    </div>
+    <footer><p>Research prototype. No universal BEV/PHEV/FCEV or manufacturer coverage is claimed.</p><a href="/docs">API documentation</a></footer>
+  </main>
+</body>
+</html>

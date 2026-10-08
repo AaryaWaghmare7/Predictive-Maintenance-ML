@@ -1,9 +1,17 @@
-pandas
-numpy
-scikit-learn
-joblib
+# Match the existing saved pipeline's recorded environment; do not retrain it.
+pandas==2.3.3
+numpy==2.3.5
+scikit-learn==1.7.2
+joblib==1.5.2
 matplotlib
 seaborn
 jupyter
 ipykernel
 pytest
+# Localhost application and HTTP endpoint tests; no frontend framework.
+fastapi==0.142.2
+starlette==1.7.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+pydantic==2.12.4
+httpx==0.28.1
