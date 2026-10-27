@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from collections import Counter
 import io
 import math
 
@@ -28,10 +29,12 @@ class TelemetryLimitError(TelemetryValidationError):
 
 
 def parse_telemetry_csv(content: bytes) -> pd.DataFrame:
-    """Require UTF-8/BOM, seven unique headers and finite normalized values.
+    """Select seven required sensors from UTF-8 CSV, in canonical model order.
 
-    No column renaming, row dropping, physical-unit scaling or persistence.
-    Extra target/timestamp/ID columns are rejected, not used as features.
+    Only surrounding header whitespace is normalized. Extra columns (including
+    an optional Fault Label) are ignored, never passed to the model. All sensor
+    cells and record widths are validated before inference; no rows/values are
+    dropped, imputed, scaled or persisted. Parsing notes live in DataFrame attrs.
     """
     if len(content) > MAX_UPLOAD_BYTES:
         raise TelemetryLimitError("CSV exceeds the 5 MiB upload limit")
@@ -41,33 +44,50 @@ def parse_telemetry_csv(content: bytes) -> pd.DataFrame:
         raise TelemetryValidationError("CSV must be encoded as UTF-8 (UTF-8 BOM is supported)") from error
     reader = csv.reader(io.StringIO(text, newline=""), strict=True)
     try:
-        headers = next(reader, None)
-        if headers is None or len(headers) != len(NEV_FEATURES) or set(headers) != set(NEV_FEATURES):
-            raise TelemetryValidationError("CSV must have exactly the seven unique Experiment 2 feature headers")
+        original_headers = next(reader, None)
+        if not original_headers:
+            raise TelemetryValidationError("CSV is empty; provide a header and at least one sensor observation")
+        headers = [header.strip() for header in original_headers]
+        if any(not header for header in headers):
+            raise TelemetryValidationError("CSV has an empty column header; give every column a unique name")
+        duplicates = [header for header, count in Counter(headers).items() if count > 1]
+        if duplicates:
+            raise TelemetryValidationError("CSV has duplicate headers after trimming whitespace: " + ", ".join(duplicates))
+        missing = [feature for feature in NEV_FEATURES if feature not in headers]
+        if missing:
+            raise TelemetryValidationError("CSV is missing required sensor columns: " + ", ".join(missing))
+        feature_positions = [headers.index(feature) for feature in NEV_FEATURES]
         rows = []
         for record in reader:
             if len(rows) >= MAX_CSV_ROWS:
                 raise TelemetryLimitError("CSV exceeds the 20,000-row limit")
             if len(record) != len(headers):
-                raise TelemetryValidationError(f"CSV line {reader.line_num}: expected seven values")
-            try:
-                row = [float(cell) for cell in record]
-                # Cheap per-row check, followed by the shared frame validator.
-                if not all(math.isfinite(value) and -NORMALIZED_RANGE_TOLERANCE <= value
-                           <= 1 + NORMALIZED_RANGE_TOLERANCE for value in row):
-                    raise ValueError("Nonfinite or out-of-range sensor value")
-            except (ValueError, TypeError) as error:
                 raise TelemetryValidationError(
-                    f"CSV line {reader.line_num}: values must be finite numeric inputs normalized to [0,1]"
-                ) from error
+                    f"CSV line {reader.line_num}: expected {len(headers)} values to match the header; found {len(record)}"
+                )
+            row = []
+            for feature, position in zip(NEV_FEATURES, feature_positions):
+                try:
+                    value = float(record[position])
+                    if not math.isfinite(value) or not (-NORMALIZED_RANGE_TOLERANCE <= value
+                                                       <= 1 + NORMALIZED_RANGE_TOLERANCE):
+                        raise ValueError("Nonfinite or out-of-range sensor value")
+                except ValueError as error:
+                    raise TelemetryValidationError(
+                        f"CSV line {reader.line_num}, {feature}: use a finite numeric input normalized to [0,1]; blanks are not allowed"
+                    ) from error
+                row.append(value)
             rows.append(row)
     except csv.Error as error:
         raise TelemetryValidationError("CSV quoting or structure is malformed") from error
     if not rows:
         raise TelemetryValidationError("CSV contains no sensor observations")
-    frame = pd.DataFrame(rows, columns=headers)
+    frame = pd.DataFrame(rows, columns=NEV_FEATURES)
     validate_nev_frame(frame, require_target=False)
-    return frame.loc[:, list(NEV_FEATURES)]
+    frame.attrs["ignored_columns"] = [header for header in headers if header not in NEV_FEATURES]
+    frame.attrs["normalized_headers"] = {original: trimmed for original, trimmed
+                                         in zip(original_headers, headers) if original != trimmed}
+    return frame
 
 
 def make_prediction(row: pd.Series, model_version: str) -> FaultPrediction:
@@ -102,6 +122,8 @@ def analyze_telemetry(content: bytes, pipeline: Pipeline, model_version: str) ->
         dominant_abnormal_fault=dominant[0] if len(dominant) == 1 else None,
         dominant_abnormal_faults=dominant,
         mean_model_confidence=float(np.mean([row.model_confidence for row in predictions])),
+        ignored_columns=sensors.attrs["ignored_columns"],
+        normalized_headers=sensors.attrs["normalized_headers"],
         model_version=model_version, predictions_returned=len(returned),
         predictions_truncated=len(output) > len(returned), predictions=returned,
     )

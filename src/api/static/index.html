@@ -3,99 +3,157 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EV Predictive Maintenance Platform</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <meta name="theme-color" content="#08090B">
+  <meta name="description" content="EVision — AI-Powered EV Predictive Maintenance. An evidence-led EV fault-diagnosis research platform.">
+  <title>EVision | AI-Powered EV Predictive Maintenance</title>
+  <script id="local-preview-guard">
+    // This is a FastAPI application, not a standalone HTML document.
+    // Double-click previews must use the documented local server instead.
+    if (location.protocol === "file:") location.replace("http://127.0.0.1:8012/");
+  </script>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css?v=evision-1">
+  <link rel="preload" as="image" href="/static/evision-car.webp" type="image/webp">
+  <script src="/static/app.js?v=evision-1" defer></script>
 </head>
 <body>
-  <main>
-    <header>
-      <p class="eyebrow">Localhost proof of concept</p>
-      <h1>EV Predictive Maintenance Platform</h1>
-      <p>Fault diagnosis from normalized sensor observations. RUL and risk scoring are not connected.</p>
-      <p id="model-status" class="model-status" role="status">Checking saved model…</p>
-    </header>
-
-    <aside class="warning">
-      <strong>Prototype mode: inputs are normalized values approximately in [0,1].</strong>
-      <p>Original physical-unit normalization parameters are unknown. Do not enter raw volts, amps, RPM or temperatures.</p>
-      <p>Model confidence is an uncalibrated class probability, not a real-world failure probability or a safety rating. No temporal, cross-vehicle or equivalent OEM performance is established.</p>
-    </aside>
-
-    <section class="card" aria-labelledby="fault-heading">
-      <h2 id="fault-heading">Fault Diagnosis</h2>
-      <p>Analyze one independent normalized observation using the saved NEV Random Forest pipeline.</p>
-      <form id="fault-form">
-        <div class="input-grid">
-          <label for="voltage">Voltage<input id="voltage" name="Voltage (V)" type="number" min="0" max="1" step="any" required></label>
-          <label for="current">Current<input id="current" name="Current (A)" type="number" min="0" max="1" step="any" required></label>
-          <label for="motor-speed">Motor Speed<input id="motor-speed" name="Motor Speed (RPM)" type="number" min="0" max="1" step="any" required></label>
-          <label for="temperature">Temperature<input id="temperature" name="Temperature (°C)" type="number" min="0" max="1" step="any" required></label>
-          <label for="vibration">Vibration<input id="vibration" name="Vibration (g)" type="number" min="0" max="1" step="any" required></label>
-          <label for="ambient-temperature">Ambient Temperature<input id="ambient-temperature" name="Ambient Temp (°C)" type="number" min="0" max="1" step="any" required></label>
-          <label for="humidity">Humidity<input id="humidity" name="Humidity (%)" type="number" min="0" max="1" step="any" required></label>
-        </div>
-        <div class="actions">
-          <button id="analyze-button" type="submit" disabled>Analyze Vehicle</button>
-          <button id="example-button" type="button" class="secondary">Load synthetic example</button>
-        </div>
-        <p class="small">The example is synthetic, not an actual vehicle measurement. Every field uses the normalized dataset scale.</p>
-      </form>
-      <p id="fault-error" class="error" role="alert"></p>
-      <div id="fault-result" class="result" aria-live="polite" hidden>
-        <p class="eyebrow">Model diagnosis</p>
-        <h3 id="predicted-fault"></h3>
-        <dl>
-          <div><dt>Model confidence</dt><dd id="model-confidence"></dd></div>
-          <div><dt>Model status</dt><dd id="prediction-status"></dd></div>
-          <div><dt>Artifact version</dt><dd id="prediction-version"></dd></div>
-        </dl>
-        <p class="small">A “Normal” prediction is not a guarantee that a vehicle is healthy or safe to operate.</p>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="csv-heading">
-      <h2 id="csv-heading">CSV Telemetry Upload</h2>
-      <p>Upload UTF-8 CSV with exactly the seven sensor columns below, in any order. No target, timestamp or vehicle-ID columns are accepted in this MVP.</p>
-      <pre class="headers">Voltage (V),Current (A),Motor Speed (RPM),Temperature (°C),Vibration (g),Ambient Temp (°C),Humidity (%)</pre>
-      <p class="small">Maximum 5 MiB and 20,000 rows. Every row is validated; invalid uploads are rejected in full. Uploads are not retained by the application. Predictions are independent observations, not a temporal sequence.</p>
-      <form id="csv-form">
-        <label for="telemetry-file">Normalized telemetry CSV<input id="telemetry-file" name="file" type="file" accept=".csv,text/csv" required></label>
-        <div class="actions"><button id="upload-button" type="submit" disabled>Analyze CSV</button><a id="download-example" class="button-link secondary" href="/static/synthetic_normalized_telemetry.csv" download>Download synthetic CSV example</a></div>
-      </form>
-      <p id="csv-error" class="error" role="alert"></p>
-      <div id="csv-result" aria-live="polite" hidden>
-        <div class="summary-grid">
-          <div><span>Rows analyzed</span><strong id="csv-rows"></strong></div>
-          <div><span>Mean model confidence</span><strong id="csv-confidence"></strong></div>
-          <div><span>Dominant abnormal label</span><strong id="csv-dominant"></strong></div>
-        </div>
-        <div class="table-scroll">
-          <table><caption>Class counts across all validated rows</caption><thead><tr><th>Fault class</th><th>Count</th><th>Percentage</th></tr></thead><tbody id="class-summary"></tbody></table>
-        </div>
-        <p id="row-limit-note" class="small"></p>
-        <details>
-          <summary>View row-level predictions</summary>
-          <div class="table-scroll"><table><thead><tr><th>Observation #</th><th>Predicted fault</th><th>Model confidence</th></tr></thead><tbody id="row-predictions"></tbody></table></div>
-        </details>
-      </div>
-    </section>
-
-    <div class="future-grid">
-      <section class="card future" aria-labelledby="rul-heading">
-        <h2 id="rul-heading">Remaining Useful Life</h2>
-        <p>RUL model not yet connected.</p>
-        <p class="small">Requires a separately approved degradation/time-to-failure dataset. NEV cannot provide a valid remaining-life estimate.</p>
-        <button type="button" disabled>Estimate RUL — unavailable</button>
-      </section>
-      <section class="card future" aria-labelledby="risk-heading">
-        <h2 id="risk-heading">Risk Assessment</h2>
-        <p>Risk scoring is disabled.</p>
-        <p class="small">No validated RUL/risk methodology is connected. Fault labels and model confidence are not converted into fabricated risk scores.</p>
-        <button type="button" disabled>Calculate risk — unavailable</button>
-      </section>
+  <a class="skip-link" href="#main-content">Skip to diagnosis</a>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">
+    <symbol id="icon-pulse" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
+    <symbol id="icon-sensors" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+    <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 3 9 4v6c0 5-9 9-9 9S3 18 3 13V7z"/></symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 20V11h3v9m4 0V4h3v16m4 0V8h3v12"/></symbol>
+    <symbol id="icon-leaf" viewBox="0 0 24 24"><path d="M5 17C0 5 14 3 21 3c0 8-2 19-13 15M3 22 17 8"/></symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5zM14 3v6h5M8 13h8m-8 4h8"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></symbol>
+  </svg>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#home" aria-label="EVision home">
+        <span class="brand-mark"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-pulse"/></svg></span>
+        <span><strong>EV<span class="brand-accent">ision</span></strong><span class="brand-subtitle">AI-Powered EV Predictive Maintenance</span></span>
+      </a>
+      <nav class="topnav" aria-label="Dashboard navigation">
+        <a href="#home">Home</a>
+        <a href="#diagnostics">Diagnostics</a>
+        <a href="#analytics">Analytics</a>
+        <a href="#system-heading">Models</a>
+        <a href="#reports">Reports</a>
+        <a href="#documentation">Documentation</a>
+      </nav>
+      <span id="model-status" class="status-chip" role="status" data-state="checking"><span class="status-dot" aria-hidden="true"></span><span id="model-status-text">Checking model</span></span>
     </div>
-    <footer><p>Research prototype. No universal BEV/PHEV/FCEV or manufacturer coverage is claimed.</p><a href="/docs">API documentation</a></footer>
+  </header>
+  <main id="main-content">
+    <section id="home" class="hero" aria-labelledby="hero-heading">
+      <div class="studio-light" aria-hidden="true"></div>
+      <div class="hero-lines" aria-hidden="true"><span></span><span></span></div>
+      <div class="hero-art" aria-hidden="true"><img class="hero-car" src="/static/evision-car.webp" width="1774" height="887" alt="" fetchpriority="high" decoding="async"></div>
+      <div class="hero-inner">
+        <p class="hero-brand">EV<span>ision</span><span class="hero-brand-label">AI-Powered EV Predictive Maintenance</span></p>
+        <p class="eyebrow">AI-powered insights. Evidence-led engineering.</p>
+        <h1 id="hero-heading">Predict. <span>Prevent.</span><br class="mobile-break"> Drive Further.</h1>
+        <p class="hero-description">Exploring intelligent fault diagnosis<br>for the next generation of electric mobility.</p>
+        <div class="hero-actions"><a class="primary-button" href="#diagnostics">Get Started <svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-arrow"/></svg></a><a id="explore-demo" class="secondary-button" href="#diagnostics">Explore Demo <svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-play"/></svg></a></div>
+        <div class="hero-benefits">
+          <div><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-shield"/></svg><span><strong>Fault Diagnosis</strong><small>Four supported classes</small></span></div>
+          <div><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-chart"/></svg><span><strong>Data-Driven Insights</strong><small>Transparent evaluation</small></span></div>
+          <div><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-leaf"/></svg><span><strong>Electric Mobility</strong><small>Research, not safety certification</small></span></div>
+        </div>
+      </div>
+      <span class="hero-caption">EV FAULT DIAGNOSIS<br><span>RESEARCH PROTOTYPE</span></span>
+    </section>
+    <div class="app-shell">
+      <p id="health-message" class="error" role="alert"></p>
+      <noscript><p class="error">Enable JavaScript to use the dashboard, or use the API documentation directly.</p></noscript>
+      <div id="analytics" class="overview-grid">
+        <section class="card distribution-card" aria-labelledby="distribution-heading">
+          <header class="card-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-pulse"/></svg><h2 id="distribution-heading">Fault Diagnosis Summary</h2></div><span class="neutral-tag">Uploaded CSV</span></header>
+          <div class="distribution-layout"><div id="fault-donut" class="fault-donut" role="img" aria-label="No telemetry analyzed"><div><strong id="donut-total">—</strong><span>Observations</span></div></div><div><p id="distribution-empty" class="small">Your data, not demo statistics.<br>Analyze a CSV to see the fault distribution.</p><div id="class-distribution" class="distribution-grid" aria-label="Predicted class distribution"></div></div></div>
+          <p class="small chart-footnote">Model predictions only · no vehicle or time tracking</p>
+        </section>
+        <section class="card model-card" aria-labelledby="system-heading">
+          <header class="card-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-chart"/></svg><h2 id="system-heading">Model Performance</h2></div><span class="neutral-tag">Test set</span></header>
+          <div class="model-metrics"><div><strong>99.42<span>%</span></strong><span>Accuracy</span></div><div><strong>99.21<span>%</span></strong><span>Macro F1</span></div><div><strong>99.23<span>%</span></strong><span>Macro Precision</span></div><div><strong>99.21<span>%</span></strong><span>Macro Recall</span></div></div>
+          <p class="small performance-note">Experiment 2 test-set performance · Random Forest<br>Supplied-dataset results, not live fleet statistics or equivalent real-world OEM performance.</p><p class="artifact-line">Artifact <code id="prediction-version">Checking…</code></p>
+        </section>
+        <section class="card upload-card" aria-labelledby="csv-heading">
+          <header class="card-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-upload"/></svg><h2 id="csv-heading">Upload Telemetry Data</h2></div></header>
+          <form id="csv-form"><div class="upload-area"><span class="upload-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-upload"/></svg></span><label for="telemetry-file">Upload Vehicle Telemetry CSV</label><p class="small">Normalized inputs · UTF-8 CSV · up to 5 MiB</p><input id="telemetry-file" name="file" type="file" accept=".csv,text/csv" required aria-describedby="file-name csv-limits"><p id="file-name" class="file-name" role="status">No file selected</p></div><div class="form-actions"><button id="upload-button" class="primary-button" type="submit" disabled><span id="upload-label">Analyze Telemetry</span><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-arrow"/></svg></button></div><p id="csv-upload-status" class="small" role="status">Your file is not retained by the application.</p></form>
+          <p id="csv-error" class="error" role="alert"></p><a id="download-example" class="text-link" href="/static/synthetic_normalized_telemetry.csv" download="sample_normalized_telemetry.csv">Download Sample CSV <span aria-hidden="true">↓</span></a>
+        </section>
+      </div>
+      <section id="telemetry-analysis" class="card telemetry-card" aria-labelledby="telemetry-heading">
+        <header class="card-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-file"/></svg><div><h2 id="telemetry-heading">Telemetry Analytics</h2><p>Independent observations, not a timeline of vehicle events</p></div></div><button id="download-results" class="secondary-button" type="button" disabled>Download predictions CSV</button></header>
+        <div class="schema-guide"><details><summary>CSV schema &amp; upload requirements</summary><p>Seven sensor columns, in any order. <strong>Fault Label is not required.</strong></p><ul class="column-list"><li><code>Voltage (V)</code></li><li><code>Current (A)</code></li><li><code>Motor Speed (RPM)</code></li><li><code>Temperature (°C)</code></li><li><code>Vibration (g)</code></li><li><code>Ambient Temp (°C)</code></li><li><code>Humidity (%)</code></li></ul><p class="small">UTF-8 BOM and surrounding header spaces are supported. Extra columns are reported and ignored, never used for prediction.</p><p id="csv-limits" class="small">Up to 5 MiB / 20,000 rows. All sensor cells must be finite numbers in [0,1]. Invalid uploads are rejected in full.</p></details></div>
+        <p id="telemetry-empty" class="small empty-telemetry">No telemetry analyzed yet. Upload a CSV above, or download the four-observation sample to explore the workflow.</p>
+        <div id="csv-result" class="telemetry-result" aria-live="polite" hidden>
+          <div class="summary-grid"><div><span>Rows analyzed</span><strong id="csv-rows"></strong></div><div><span>Mean Model Confidence</span><strong id="csv-confidence"></strong></div><div><span>Dominant abnormality</span><strong id="csv-dominant"></strong></div></div>
+          <div class="chart-controls"><p id="csv-filter-status" class="small" role="status"></p><button id="clear-csv-filter" class="secondary-button" type="button" disabled>Show all classes</button></div>
+          <p id="csv-parsing-note" class="small"></p><p id="row-limit-note" class="small"></p>
+          <details id="row-details"><summary>View row-level predictions</summary><div class="table-scroll"><table><caption>File order is not time order. These are model predictions, not confirmed fault events. Downloads include returned rows only (up to 1,000), irrespective of the chart filter.</caption><thead><tr><th scope="col">Observation #</th><th scope="col">Predicted fault</th><th scope="col">Model Confidence</th></tr></thead><tbody id="row-predictions"></tbody></table></div></details>
+        </div>
+      </section>
+    <section id="diagnostics" aria-labelledby="diagnostics-heading">
+    <div class="page-heading">
+      <div><p class="eyebrow">THE DIAGNOSTIC WORKSPACE</p><h2 id="diagnostics-heading" class="section-title">Understand the signal.</h2><p class="page-description">Seven sensor inputs. Four diagnostic classes. One evidence-led workflow.</p></div>
+      <span class="outline-chip">Research prototype <span class="version-tag">v0.1</span></span>
+    </div>
+    <div class="diagnosis-grid">
+      <section class="card sensor-card" aria-labelledby="sensor-heading">
+        <header class="card-heading"><div class="heading-with-icon"><span class="icon-box"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-sensors"/></svg></span><div><h2 id="sensor-heading">Vehicle Sensor Input</h2><p>One observation · seven operational features</p></div></div><span class="neutral-tag">0–1 scale</span></header>
+        <aside class="input-notice"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-info"/></svg><div><strong>Prototype input mode</strong><p>This model expects normalized sensor values approximately between 0 and 1. Original normalization parameters are unknown.</p><p>Do not enter raw volts, amps, RPM or degrees Celsius.</p></div></aside>
+        <form id="fault-form">
+          <div class="input-grid">
+            <div class="field"><label for="voltage">Voltage</label><div class="number-field"><input id="voltage" name="Voltage (V)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="voltage-hint"><span aria-hidden="true">V</span></div><p id="voltage-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="current">Current</label><div class="number-field"><input id="current" name="Current (A)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="current-hint"><span aria-hidden="true">A</span></div><p id="current-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="motor-speed">Motor Speed</label><div class="number-field"><input id="motor-speed" name="Motor Speed (RPM)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="motor-speed-hint"><span aria-hidden="true">RPM</span></div><p id="motor-speed-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="temperature">Temperature</label><div class="number-field"><input id="temperature" name="Temperature (°C)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="temperature-hint"><span aria-hidden="true">°C</span></div><p id="temperature-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="vibration">Vibration</label><div class="number-field"><input id="vibration" name="Vibration (g)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="vibration-hint"><span aria-hidden="true">g</span></div><p id="vibration-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="ambient-temperature">Ambient Temperature</label><div class="number-field"><input id="ambient-temperature" name="Ambient Temp (°C)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="ambient-temperature-hint"><span aria-hidden="true">°C</span></div><p id="ambient-temperature-hint" class="field-hint">Normalized input: 0–1</p></div>
+            <div class="field"><label for="humidity">Humidity</label><div class="number-field"><input id="humidity" name="Humidity (%)" type="number" min="0" max="1" step="any" placeholder="0.000" required aria-describedby="humidity-hint"><span aria-hidden="true">%</span></div><p id="humidity-hint" class="field-hint">Normalized input: 0–1</p></div>
+          </div>
+          <div class="sample-section"><p class="section-label">Try a sample observation</p><div class="sample-grid">
+            <button type="button" class="sample-button" data-sample="0"><span class="sample-code" aria-hidden="true">00</span>Load Normal Sample</button>
+            <button type="button" class="sample-button" data-sample="1"><span class="sample-code" aria-hidden="true">01</span>Load Motor Fault Sample</button>
+            <button type="button" class="sample-button" data-sample="2"><span class="sample-code" aria-hidden="true">02</span>Load Inverter Fault Sample</button>
+            <button type="button" class="sample-button" data-sample="3"><span class="sample-code" aria-hidden="true">03</span>Load Battery Fault Sample</button>
+          </div><p id="sample-status" class="small" role="status">Samples fill the form only. Click Analyze Vehicle to run diagnosis.</p></div>
+          <div class="form-actions"><button id="analyze-button" class="primary-button" type="submit" disabled><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-pulse"/></svg><span id="analyze-label">Analyze Vehicle</span><svg class="icon action-arrow" aria-hidden="true"><use href="#icon-arrow"/></svg></button><span class="small">Saved pipeline · no fitting at inference</span></div>
+        </form>
+        <p id="fault-error" class="error" role="alert"></p>
+      </section>
+      <aside class="support-column">
+        <section class="card result-card" aria-labelledby="result-heading">
+          <header class="card-heading"><h2 id="result-heading">Fault Analysis Result</h2><span id="result-state" class="neutral-tag">Awaiting input</span></header>
+          <div id="fault-empty" class="empty-result"><span class="empty-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-pulse"/></svg></span><h3>Awaiting vehicle analysis</h3><p>Enter normalized sensor values or load a sample, then select Analyze Vehicle.</p></div>
+          <div id="fault-result" class="result" aria-live="polite" hidden>
+            <p class="section-label">Vehicle Condition</p><h3 id="predicted-fault"></h3><p id="prediction-status" class="condition-status"></p>
+            <div class="confidence-heading"><span>Model Confidence</span><strong id="model-confidence"></strong></div><div class="confidence-track" aria-hidden="true"><span id="confidence-fill"></span></div>
+            <p class="small">Predicted-class probability, not a real-world failure probability. A Normal label does not guarantee safe operation.</p>
+          </div>
+          <dl class="compact-list result-metadata"><div><dt>Model</dt><dd>Random Forest</dd></div><div><dt>Module</dt><dd>EV Fault Diagnosis</dd></div></dl>
+        </section>
+
+      </aside>
+    </div>
+    </section>
+    <div class="module-heading"><h2>Upcoming Modules</h2><span class="small">Under Development · not part of current predictions</span></div>
+    <div class="future-grid">
+      <section class="card future" aria-labelledby="rul-heading"><span class="future-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-clock"/></svg></span><div><div class="future-title"><h3 id="rul-heading">Bearing / Component RUL</h3><span class="neutral-tag">Under Development</span></div><p>Pending verified dataset. Remaining Useful Life requires documented run-to-failure records, failure endpoints and a separately validated component model.</p><p class="small">RUL model not yet connected. No RUL estimate or degradation curve is available. NEV fault diagnosis does not predict bearing life.</p><button class="secondary-button" type="button" disabled>Estimate RUL — unavailable</button></div></section>
+      <section class="card future" aria-labelledby="risk-heading"><span class="future-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-sensors"/></svg></span><div><div class="future-title"><h3 id="risk-heading">Maintenance Risk Engine</h3><span class="neutral-tag">Pending validated evidence</span></div><p>Low / Medium / High assessment requires documented thresholds and compatible component, unit and observation context.</p><p class="small">Risk scoring is disabled. No risk level, probability or automatic maintenance recommendation is generated from fault confidence.</p><button class="secondary-button" type="button" disabled>Calculate risk — unavailable</button></div></section>
+    </div>
+    <div class="resource-grid">
+      <section id="reports" class="card resource-card" aria-labelledby="reports-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-file"/></svg><h2 id="reports-heading">Research Reports</h2></div><p>Experiment 1 documents weak failure signal. Experiment 2 evaluates four-class NEV fault diagnosis on the supplied dataset.</p><p class="small">Reports 05–10 are preserved in the repository’s <code>reports/</code> directory. High test scores are not evidence of equivalent real-world performance.</p><a class="text-link" href="https://github.com/AaryaWaghmare7/Predictive-Maintenance-ML/tree/main/reports" target="_blank" rel="noopener noreferrer">Browse published reports ↗</a></section>
+      <section id="documentation" class="card resource-card" aria-labelledby="documentation-heading"><div class="heading-with-icon"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-info"/></svg><h2 id="documentation-heading">Built on clear boundaries.</h2></div><p>One saved Random Forest pipeline. Seven normalized inputs. No model training during diagnosis. No unsupported RUL or risk outputs.</p><div class="resource-links"><a class="text-link" href="/docs">Interactive API documentation ↗</a><a class="text-link" href="/ready">Model readiness ↗</a></div><p class="small">The hero is an original AI-generated illustration, not a monitored vehicle.</p></section>
+    </div>
+    <aside class="limitations" aria-labelledby="limitations-heading"><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-info"/></svg><div><h2 id="limitations-heading">Prototype limitations</h2><p>Normalized 0–1 inputs only; original physical-unit normalization parameters are unavailable. The NEV dataset has no timestamps or vehicle IDs: temporal and cross-vehicle generalization are not established. This is a research proof of concept, with performance measured on the Experiment 2 dataset. RUL is not implemented. No universal EV or manufacturer coverage is claimed.</p></div></aside>
+    <footer><span><strong>EVision</strong> <span aria-hidden="true">·</span> AI-Powered EV Predictive Maintenance<br>Fault diagnosis, not a vehicle safety certification.</span><button id="motion-toggle" class="secondary-button" type="button" aria-pressed="false">Reduce motion</button></footer>
+    </div>
   </main>
 </body>
 </html>

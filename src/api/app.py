@@ -1,7 +1,7 @@
 """Localhost MVP: saved-model diagnosis, CSV telemetry and static dashboard.
 
 No model fitting, physical-unit conversion, RUL predictions or risk scoring.
-Start from the project root with: python -m uvicorn src.api.app:app --port 8010
+Start from the project root with: python -m uvicorn src.api.app:app --port 8012
 """
 
 from __future__ import annotations
@@ -10,12 +10,13 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import pandas as pd
 from starlette.concurrency import run_in_threadpool
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from src.api.schemas import FaultPrediction, FaultRequest, INPUT_MODE, TelemetrySummary
 from src.api.telemetry import (
@@ -28,11 +29,58 @@ from src.storage.model_registry import NEV_PIPELINE_PATH, load_nev_fault_pipelin
 
 LOGGER = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+MAX_REQUEST_BYTES = 6 * 1024 * 1024  # Multipart envelope; CSV itself remains 5 MiB.
+
+
+class RequestSafetyMiddleware:
+    """Bound actual request bytes before multipart parsing, including chunked uploads.
+
+    This is a per-request guard, not authentication, rate limiting or a substitute
+    for a hosting provider's ingress controls. No body is copied or persisted here.
+    """
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        limit = MAX_REQUEST_BYTES if scope["path"] == "/analyze-csv" else 16 * 1024
+
+        async def safe_send(message):
+            if message["type"] == "http.response.start":
+                message["headers"] = list(message["headers"]) + [
+                    (b"x-content-type-options", b"nosniff"),
+                    (b"x-frame-options", b"DENY"),
+                    (b"referrer-policy", b"no-referrer"),
+                ]
+            await send(message)
+
+        length = dict(scope["headers"]).get(b"content-length", b"0")
+        try:
+            size = int(length)
+            if size < 0:
+                raise ValueError
+        except ValueError:
+            return await JSONResponse({"detail": "Invalid Content-Length"}, status_code=400)(scope, receive, safe_send)
+        if size > limit:
+            return await JSONResponse({"detail": "Request exceeds the allowed body size"}, status_code=413)(scope, receive, safe_send)
+        received = 0
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            received += len(message.get("body", b""))
+            if received > limit:
+                raise HTTPException(status_code=413, detail="Request exceeds the allowed body size")
+            return message
+
+        await self.app(scope, limited_receive, safe_send)
 
 
 def health_check() -> dict[str, str]:
     """Keep the original lightweight health helper backward compatible."""
-    return {"status": "ok", "message": "EV Predictive Maintenance Platform API"}
+    return {"status": "ok", "message": "EVision API — AI-Powered EV Predictive Maintenance"}
 
 
 def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
@@ -58,10 +106,11 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
         application.state.pipeline = None
 
     application = FastAPI(
-        title="EV Predictive Maintenance Platform", version="0.1.0",
+        title="EVision", version="0.1.0",
         description="Local proof-of-concept fault diagnosis with normalized inputs; RUL/risk disabled.",
         lifespan=lifespan,
     )
+    application.add_middleware(RequestSafetyMiddleware)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_request: Request, error: RequestValidationError):
@@ -98,8 +147,14 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
             LOGGER.exception("Fault inference failed")
             raise HTTPException(status_code=503, detail="Saved model inference failed; check the trusted artifact and compatible dependencies") from None
 
+    @application.get("/ready", include_in_schema=False)
+    def readiness():
+        """Model-aware health check for a future service; /health stays compatible."""
+        current = health()
+        return JSONResponse(current, status_code=200 if current["fault_model_status"] == "ready" else 503)
+
     @application.post("/analyze-csv", response_model=TelemetrySummary)
-    async def analyze_csv(file: UploadFile):
+    async def analyze_csv(file: UploadFile = File(...)):
         pipeline = require_model()
         try:
             content = await file.read(MAX_UPLOAD_BYTES + 1)

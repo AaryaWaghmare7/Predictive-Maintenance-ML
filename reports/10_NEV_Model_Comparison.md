@@ -190,12 +190,13 @@ probabilities, and rejects extra/target, missing, nonnumeric, nonfinite and
 out-of-range inputs. It never guesses a raw-to-normalized conversion.
 
 Model loading uses joblib: load only trusted local artifacts and preferably
-the recorded package versions. No website/API is implemented. Model metadata,
-the four statistical/metric snapshots and eight report figures are tracked
-with the approved documentation. Raw CSVs and the trained `.joblib` pipeline
-remain local and Git-ignored. Pulling the repository does not download a
-fitted model; collaborators needing inference must separately obtain the
-trusted pipeline and compatible dependencies.
+the recorded package versions. Subsequent application work now provides a
+FastAPI/dashboard using this unchanged pipeline. The approved collaboration
+checkpoint intentionally tracks the small inference artifact, metadata,
+statistical/metric snapshots and report figures. Raw CSVs remain Git-ignored.
+Pulling the complete repository supplies the trusted saved pipeline; raw data
+is unnecessary for app inference. This implementation-status update does not
+change any modeling method, score, split or conclusion in this report.
 
 ## Limitations and review boundary
 

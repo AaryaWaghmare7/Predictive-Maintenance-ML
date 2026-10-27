@@ -39,10 +39,50 @@ The approved application phase reuses the existing saved NEV Random Forest witho
 
 CSV rows are validated and treated as independent observations, not a temporal sequence. Class confidence is an uncalibrated model output, not a real-world failure probability or risk rating. RUL and risk controls are visible but disabled, with no numerical outputs.
 
+The 2026-10-09 dashboard/CSV improvement keeps this architecture. A responsive
+engineering workspace separates sensor input, condition/confidence and system
+information. Four supplied samples fill inputs without automatically predicting.
+The CSV endpoint requires the seven sensors, accepts UTF-8/BOM and trimmed
+header whitespace, and reports/ignores extra metadata rather than feeding it to
+the model. All sensor rows are validated before inference; errors name missing
+columns or invalid line/feature. No normalization parameters are fitted at
+inference and uploaded files are not rewritten.
+
 `src/rul/` defines future prediction contracts only. `data/rul/`, `models/rul/` and `reports/rul/` reserve separate locations. Dataset requirements are documented in `reports/11_RUL_Dataset_Requirements.md`; component routing and coverage limits are documented in `docs/MODULAR_ARCHITECTURE.md`. No RUL dataset has been downloaded or approved and no RUL model is trained. Motor, battery and bearing/drivetrain models will have their own schemas, preprocessing, units and validation rather than merging unrelated datasets.
 
 ## Review boundary and future work
 
-Experiment 2's completed modeling work is already published. The user has approved committing and safely pushing the current localhost MVP/RUL scaffolding as a collaboration checkpoint, including the existing small inference artifact. Verify the complete suite and real application smoke checks, synchronize with origin/main without force-pushing, and stop after publication. Use Python 3.13 and pinned inference/application dependencies; document Windows startup and the pytest temp-directory workaround. Experiment 1 remains paused; existing reports, metrics, artifacts and raw data are preserved. Obtain NEV source/license, normalization parameters, labeling protocol and independent vehicle/time-aware validation before real-world claims.
+2026-10-27: the user approved publishing the tested **EVision collaboration
+checkpoint** to `origin/main`, including the existing inference artifact and
+local frontend assets, with Windows PowerShell instructions. Verify current
+tests/browser flows, preserve and integrate the README-only remote commit, and
+stage only relevant app/documentation/test changes. No force push, deployment,
+model retraining, raw-data publication or RUL/risk implementation is authorized.
+This supersedes earlier local-only Git boundaries, not the research/licensing
+limitations. Native Windows testing remains Tejaswini's next validation step.
+
+2026-10-26 showcase audit: the local saved-model demo, interactive CSV analytics,
+request-size guard, readiness check and professional documentation are prepared
+for review. No new training is authorized. Confirm NEV provenance/license and
+artifact redistribution permissions, approve publication, and reconcile the
+README-only remote change before a public GitHub/LinkedIn release. Deployment
+remains unapproved; prefer the documented single-origin FastAPI/static service.
+
+2026-10-15 clarification: complete the existing black/charcoal dashboard and
+fault/CSV checks only. The collaborator's RUL dataset is not in this checkout;
+do not download, extract or train on a replacement. RUL and Maintenance Risk
+stay visibly pending without estimates, metrics, thresholds or risk levels.
+The existing fault classifier and evaluation helpers remain unchanged.
+
+Experiment 2's completed modeling work and the localhost MVP/RUL-scaffolding
+checkpoint (dc2ee42) are already published, including the existing small
+inference artifact. The dashboard/CSV repair was initially a **local review only**;
+the 2026-10-27 approval above now permits its tested collaboration publication.
+Run the complete suite, frontend checks and real application uploads before
+publishing. Use Python 3.13 and pinned dependencies; keep
+Windows startup notes and the pytest temp-directory workaround. Experiment 1
+remains paused; reports, metrics, artifacts and raw data are preserved. Obtain
+NEV source/license, normalization parameters, labeling protocol and independent
+vehicle/time-aware validation before real-world claims.
 
 Experiment 2 does not provide Remaining Useful Life prediction. RUL requires a manually approved degradation/time-to-failure dataset and separate training approval. The NEV dataset has no timestamp or vehicle identifier, therefore temporal generalization and cross-vehicle generalization cannot be claimed. BEV/PHEV/FCEV or multi-manufacturer support also requires appropriate training and validation evidence; it is not established by the current dataset.

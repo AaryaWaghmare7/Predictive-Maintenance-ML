@@ -6,9 +6,11 @@ checks, not a new evaluation dataset or evidence of real-world performance.
 
 import argparse
 import csv
+import hashlib
 import io
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 import httpx
 
@@ -26,7 +28,66 @@ SAMPLE_ROWS = (
 )
 
 
-def smoke_test_localhost(base_url="http://127.0.0.1:8010"):
+def csv_bytes(rows=SAMPLE_ROWS, headers=NEV_FEATURES):
+    """Small demo fixtures only; no training datasets are uploaded."""
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return stream.getvalue().encode("utf-8")
+
+
+def check_csv_uploads(client):
+    """Upload actual temporary files as multipart requests; verify no mutation."""
+    reordered = tuple(reversed(NEV_FEATURES))
+    reordered_rows = [list(reversed(row)) for row in SAMPLE_ROWS]
+    nonnumeric = [list(SAMPLE_ROWS[0])]
+    nonnumeric[0][3] = "invalid"
+    cases = [
+        ("valid", csv_bytes(), 200),
+        ("missing_column", csv_bytes([row[1:] for row in SAMPLE_ROWS], NEV_FEATURES[1:]), 422),
+        ("non_numeric", csv_bytes(nonnumeric), 422),
+        ("empty", b"", 422),
+        ("extra_harmless", csv_bytes([list(row) + ["demo"] for row in SAMPLE_ROWS],
+                                     list(NEV_FEATURES) + ["Note"]), 200),
+        ("reordered", csv_bytes(reordered_rows, reordered), 200),
+        ("without_target", csv_bytes(), 200),
+        ("bom_whitespace", b"\xef\xbb\xbf" + csv_bytes(headers=[f"  {name}  " for name in NEV_FEATURES]), 200),
+        ("ignored_wrong_target", csv_bytes([list(row) + [3 - index] for index, row in enumerate(SAMPLE_ROWS)],
+                                          list(NEV_FEATURES) + ["Fault Label"]), 200),
+    ]
+    with TemporaryDirectory(prefix="ev-telemetry-smoke-") as directory:
+        for name, content, expected_status in cases:
+            path = Path(directory) / f"{name}.csv"
+            path.write_bytes(content)
+            before = hashlib.sha256(path.read_bytes()).hexdigest()
+            with path.open("rb") as upload:
+                response = client.post("/analyze-csv", files={"file": (path.name, upload, "text/csv")})
+            assert response.status_code == expected_status, (name, response.text)
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+            result = response.json()
+            if expected_status == 200:
+                assert result["rows_analyzed"] == 4
+                assert [row["predicted_class"] for row in result["predictions"]] == [0, 1, 2, 3]
+                assert all(item == {"count": 1, "percentage": 25.0} for item in result["classes"].values())
+                assert abs(result["mean_model_confidence"] - 0.9975) < 1e-12
+                assert result["temporal_analysis"] is False
+                if name == "extra_harmless":
+                    assert result["ignored_columns"] == ["Note"]
+                if name == "ignored_wrong_target":
+                    assert result["ignored_columns"] == ["Fault Label"]
+                if name == "bom_whitespace":
+                    assert len(result["normalized_headers"]) == 7
+            else:
+                assert "predictions" not in result
+                if name == "missing_column":
+                    assert "Voltage (V)" in result["detail"]
+                if name == "non_numeric":
+                    assert "line 2" in result["detail"] and "Temperature (°C)" in result["detail"]
+            print(f"CSV {name}: HTTP {expected_status}; upload unchanged")
+
+
+def smoke_test_localhost(base_url="http://127.0.0.1:8012"):
     """Verify health, all four classes, validation, assets and CSV over HTTP."""
     with httpx.Client(base_url=base_url, timeout=30, trust_env=False) as client:
         health = client.get("/health")
@@ -64,20 +125,24 @@ def smoke_test_localhost(base_url="http://127.0.0.1:8010"):
 
         dashboard = client.get("/")
         dashboard.raise_for_status()
-        for text in ("EV Predictive Maintenance Platform", "Prototype mode:",
+        for text in ("EVision | AI-Powered EV Predictive Maintenance", "Prototype input mode",
+                     "Awaiting vehicle analysis", "Download Sample CSV",
                      "RUL model not yet connected.", "Risk scoring is disabled."):
             assert text in dashboard.text
-        for asset in ("app.js", "styles.css", "synthetic_normalized_telemetry.csv"):
-            client.get(f"/static/{asset}").raise_for_status()
+        for asset, expected_mime in (("app.js?v=evision-1", "text/javascript"),
+                                     ("styles.css?v=evision-1", "text/css"),
+                                     ("evision-car.webp", "image/webp"),
+                                     ("synthetic_normalized_telemetry.csv", "text/csv")):
+            response = client.get(f"/static/{asset}")
+            response.raise_for_status()
+            actual_mime = response.headers["content-type"].split(";")[0]
+            assert actual_mime == expected_mime or (expected_mime == "text/javascript" and actual_mime == "application/javascript")
+            print(f"Asset {asset}: HTTP {response.status_code}; {actual_mime}")
         print("Dashboard and required static assets: HTTP 200")
 
-        stream = io.StringIO(newline="")
-        writer = csv.writer(stream)
-        writer.writerow(NEV_FEATURES)
-        writer.writerows(SAMPLE_ROWS)
-        response = client.post("/analyze-csv", files={
-            "file": ("normalized_smoke_examples.csv", stream.getvalue().encode("utf-8"), "text/csv"),
-        })
+        # Download the UI sample too, then exercise all required upload cases.
+        sample = client.get("/static/synthetic_normalized_telemetry.csv")
+        response = client.post("/analyze-csv", files={"file": ("downloaded_sample.csv", sample.content, "text/csv")})
         response.raise_for_status()
         summary = response.json()
         assert summary["rows_analyzed"] == 4
@@ -86,10 +151,11 @@ def smoke_test_localhost(base_url="http://127.0.0.1:8010"):
         assert 0 <= summary["mean_model_confidence"] <= 1
         assert summary["temporal_analysis"] is False
         print("CSV: 4 rows; one prediction per class, 25% each; no temporal claim")
+        check_csv_uploads(client)
         print("All application smoke checks passed; no model training performed.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default="http://127.0.0.1:8010")
+    parser.add_argument("--base-url", default="http://127.0.0.1:8012")
     smoke_test_localhost(parser.parse_args().base_url)

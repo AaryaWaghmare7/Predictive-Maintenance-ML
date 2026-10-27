@@ -18,15 +18,21 @@ canonical seven-column order, calls `src/prediction/nev_fault.py`, and returns
 the label and class probabilities. `POST /analyze-csv` validates every uploaded
 observation first, then uses the same inference function. The upload follows
 [FastAPI's UploadFile interface](https://fastapi.tiangolo.com/tutorial/request-files/).
-No uploaded artifact can replace the model. `/health` exposes readiness; a
+No uploaded artifact can replace the model. `/health` exposes application/model
+status; `/ready` returns 503 when the saved model is unavailable. A
 missing/incompatible saved model returns 503 for inference, never retraining.
 
-The dashboard uses only HTML/CSS/JavaScript. RUL/risk controls are disabled.
+The EVision dashboard uses only HTML/CSS/JavaScript and a local transparent WebP
+car; no GSAP/CDN or frontend build is required. Interactive CSV legends filter returned
+row details without changing whole-file counts or re-running inference.
+RUL/risk controls are disabled.
 Confidence is uncalibrated class probability, not a risk score. The API is
-localhost-only by default: authentication, production body-size enforcement,
-calibration, safety assessment and public deployment are outside this MVP.
-The 5 MiB application limit is checked after multipart parsing; it is not a
-replacement for a production ingress limit. Uploads are not retained, although
+localhost-only by default: authentication, rate limiting, calibration, safety
+assessment and public deployment are outside this MVP. A streaming ASGI guard
+bounds multipart request bytes at 6 MiB before parsing (including chunked input),
+in addition to the existing 5 MiB CSV limit. Manual bodies are capped at 16 KiB.
+Basic security response headers are provided, but these controls do not replace
+hosting-level ingress/concurrency protection. Uploads are not retained, although
 the framework may use a temporary spool file during request processing.
 
 ## Future specialized models

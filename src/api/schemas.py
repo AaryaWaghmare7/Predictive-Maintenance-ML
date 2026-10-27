@@ -58,6 +58,8 @@ class TelemetrySummary(BaseModel):
     dominant_abnormal_fault: str | None
     dominant_abnormal_faults: list[str]
     mean_model_confidence: Probability
+    ignored_columns: list[str] = Field(default_factory=list)
+    normalized_headers: dict[str, str] = Field(default_factory=dict)
     input_mode: Literal["normalized_proof_of_concept"] = INPUT_MODE
     model_version: str
     temporal_analysis: Literal[False] = False

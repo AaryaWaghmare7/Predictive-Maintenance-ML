@@ -1,4 +1,4 @@
-"""Local inference for the saved Experiment 2 pipeline; no API or website."""
+"""Shared saved-pipeline inference for Experiment 2 and its API; no fitting."""
 
 import pandas as pd
 from sklearn.pipeline import Pipeline

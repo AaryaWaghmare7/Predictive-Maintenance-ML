@@ -4,11 +4,13 @@ import importlib.metadata
 import json
 
 import pandas as pd
+import pytest
 
 from scripts.smoke_test_nev_inference import smoke_test_saved_model
 from scripts.smoke_test_localhost import SAMPLE_ROWS
 from src.config.paths import PROJECT_ROOT
-from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES
+from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES, NEV_DATA_DIR, get_nev_xy, file_sha256
+from src.evaluation.metrics import multiclass_classification_metrics
 from src.prediction.nev_fault import predict_nev_faults
 from src.storage.model_registry import NEV_PIPELINE_PATH, load_nev_fault_pipeline
 
@@ -35,9 +37,27 @@ def test_model_loading_is_independent_of_working_directory(tmp_path, monkeypatch
 
 def test_checkpoint_dependencies_match_recorded_model_versions():
     metadata = json.loads(NEV_PIPELINE_PATH.with_name("metadata.json").read_text(encoding="utf-8"))
-    requirements = (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    requirements = (PROJECT_ROOT / "requirements-api.txt").read_text(encoding="utf-8").splitlines()
+    assert "-r requirements-api.txt" in (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8")
     for package, key in (("scikit-learn", "scikit_learn"), ("pandas", "pandas"),
                          ("numpy", "numpy"), ("joblib", "joblib")):
         expected = metadata["versions"][key]
         assert f"{package}=={expected}" in requirements
         assert importlib.metadata.version(package) == expected
+
+
+def test_saved_model_reproduces_recorded_supplied_test_metrics_without_fit():
+    path = NEV_DATA_DIR / "NEV_fault_testing_dataset.csv"
+    if not path.is_file():
+        pytest.skip("Optional local raw-data reproduction; inference does not require raw CSVs")
+    metadata = json.loads(NEV_PIPELINE_PATH.with_name("metadata.json").read_text(encoding="utf-8"))
+    assert file_sha256(path) == metadata["raw_sha256"]["testing"]
+    x, y = get_nev_xy(pd.read_csv(path))
+    model = load_nev_fault_pipeline()
+    before = file_sha256(NEV_PIPELINE_PATH)
+    actual = multiclass_classification_metrics(y, model.predict(x), model.predict_proba(x), model.classes_)
+    expected = metadata["test_results"]["random_forest"]
+    for key in ("accuracy", "macro_precision", "macro_recall", "macro_f1", "roc_auc_macro_ovr"):
+        assert actual[key] == pytest.approx(expected[key], abs=1e-12)
+    assert actual["confusion_matrix"] == expected["confusion_matrix"]
+    assert file_sha256(NEV_PIPELINE_PATH) == before

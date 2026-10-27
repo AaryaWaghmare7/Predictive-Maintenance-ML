@@ -68,7 +68,7 @@
 
 - Implement one minimal FastAPI app under the existing `src/api/`, serving a same-origin plain HTML/CSS/JavaScript dashboard. Bind to `127.0.0.1`; no production deployment is approved.
 - Load the trusted local NEV pipeline once at startup. Verify its fitted feature order, Random Forest classifier, class mapping and supported package version. No upload may select or replace a model artifact. Missing/invalid artifacts return unavailable status; never automatically retrain.
-- Keep exactly the seven original normalized feature aliases for JSON and CSV. Restore canonical feature order, reject extra/missing fields and invalid values, and preserve existing 1e-12 numerical boundary tolerance without clipping or guessing physical-unit scaling.
+- Model inputs remain exactly the seven original normalized feature aliases in canonical order. JSON rejects extra/missing fields. CSV requires all seven sensors, trims surrounding header whitespace, and accepts/report-ignores extra columns (including optional Fault Label); extras never enter inference. Reject blank/duplicate headers, malformed rows and invalid sensor values. Preserve the existing 1e-12 boundary tolerance without clipping or guessing physical-unit scaling.
 - Use `model_confidence` for the predicted class probability. It is uncalibrated and is not a future-failure probability, risk score, causal explanation or guarantee of safe operation.
 - Validate a CSV in full before inference. Limit it to 5 MiB/20,000 rows and return at most 1,000 row predictions; summary covers every validated row. Uploaded rows have file order only, no inferred timestamps or shared vehicle identity. The app does not retain uploads.
 - Display RUL and risk sections as disabled. No RUL/risk endpoint or numerical placeholder is implemented. `src/rul/contracts.py` requires a real future estimate with component, machine ID, documented unit and model version.
@@ -76,7 +76,8 @@
 - Future motor, battery and bearing/drivetrain models remain separate adapters with their own feature schema, preprocessing, artifact and units. Do not merge unrelated data row-by-row or claim universal BEV/PHEV/FCEV/manufacturer coverage.
 - Collaboration checkpoint approved on 2026-10-08: intentionally track only `models/experiment_2/nev_fault_pipeline.joblib` (2,729,762 bytes; SHA-256 recorded in `INFERENCE_ARTIFACT.md`) so a fresh pull can perform inference without local Mac files or raw datasets. Do not retrain or change recorded metrics. Other artifacts remain ignored.
 - Pin the existing model's scikit-learn/pandas/NumPy/joblib versions and tested web dependencies. Use Python 3.13; preserve repository-relative paths and locally selected interpreters. Windows execution still requires confirmation on Tejaswini's machine.
-- Current boundary: verify tests and localhost smoke checks, preserve both experiments and unrelated Java files, then commit and safely push to origin/main without force. Stop after synchronization; no RUL training, risk engine, cloud deployment or major UI redesign is authorized.
+- The 2026-10-08 collaboration checkpoint was published as dc2ee42. The later 2026-10-09 request authorizes a responsive engineering-dashboard redesign and robust CSV import repair using the existing HTML/CSS/JS/FastAPI architecture. Four supplied samples fill the form only; an explicit Analyze action runs inference. Show predicted-class Model Confidence, not a failure/risk score. Keep dataset-only metrics and prototype limitations visible.
+- Previous local-review boundary (superseded for Git publication by the 2026-10-27 checkpoint approval below): verify tests/browser flows and stop without committing/pushing. Preservation, no-retraining and no-deployment restrictions remain in force.
 
 ## Collaborator environments
 
@@ -86,6 +87,10 @@
 
 ## Open items
 
+- 2026-10-27 approval: publish the verified EVision app as a GitHub collaboration checkpoint, preserving the remote README contribution and existing experiments/artifact. This supersedes prior no-commit/no-push boundaries for these app changes only. Add Windows instructions, keep raw data and unrelated Java files out, and stop after a normal push to `origin/main`. No deployment, model fitting or unrestricted-release/license claim is approved.
+
+- 2026-10-26 showcase audit: local UI/documentation improvements, interactive CSV filtering, bounded request bodies, model-aware readiness and lean runtime dependencies are approved for local implementation/testing only. The unchanged Random Forest was re-evaluated without fitting. NEV source/license and artifact redistribution remain unverified. Keep RUL Under Development and risk disabled; do not deploy, commit, push or merge. A fetched README-only remote commit remains unintegrated pending approval.
+- 2026-10-15 scope clarification: the collaborator's RUL data is not in this local checkout. Stop RUL training and risk integration until verified data/model and defensible component-compatible thresholds are available. Do not download or extract new data. Complete only the black/charcoal frontend and fault/CSV regression checks, keep both modules visibly pending, and stop without committing, pushing or deploying.
 - Confirm the label's precise observation timing and any prediction horizon.
 - Confirm measurement timing and derivation for every feature, especially cumulative or condition-score fields.
 - For NEV, obtain its source/license, original normalization parameters and label-generation/measurement protocol.
