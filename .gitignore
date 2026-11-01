@@ -19,6 +19,7 @@ env/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Data files
 data/raw/*
@@ -86,6 +87,7 @@ reports/metrics/experiment_2/*
 !reports/metrics/experiment_2/model_comparison.json
 !reports/metrics/experiment_2/selection_before_test.json
 !reports/metrics/experiment_2/signal.json
+!reports/metrics/experiment_2/dashboard_reference.json
 
 # Logs and outputs
 logs/*

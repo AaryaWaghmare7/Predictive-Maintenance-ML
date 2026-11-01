@@ -14,10 +14,12 @@ from sklearn.pipeline import Pipeline
 from src.api.schemas import ClassSummary, FaultPrediction, TelemetrySummary
 from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES, NORMALIZED_RANGE_TOLERANCE, validate_nev_frame
 from src.prediction.nev_fault import predict_nev_faults
+from src.eda.dashboard import build_dashboard_data, load_dashboard_reference
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_CSV_ROWS = 20_000
 MAX_ROW_PREDICTIONS = 1_000
+MAX_COLUMNS = 100
 
 
 class TelemetryValidationError(ValueError):
@@ -48,6 +50,8 @@ def parse_telemetry_csv(content: bytes) -> pd.DataFrame:
         if not original_headers:
             raise TelemetryValidationError("CSV is empty; provide a header and at least one sensor observation")
         headers = [header.strip() for header in original_headers]
+        if len(headers) > MAX_COLUMNS or any(len(header) > 128 for header in headers):
+            raise TelemetryLimitError("Use at most 100 columns with headers up to 128 characters")
         if any(not header for header in headers):
             raise TelemetryValidationError("CSV has an empty column header; give every column a unique name")
         duplicates = [header for header, count in Counter(headers).items() if count > 1]
@@ -69,13 +73,14 @@ def parse_telemetry_csv(content: bytes) -> pd.DataFrame:
             for feature, position in zip(NEV_FEATURES, feature_positions):
                 try:
                     value = float(record[position])
-                    if not math.isfinite(value) or not (-NORMALIZED_RANGE_TOLERANCE <= value
-                                                       <= 1 + NORMALIZED_RANGE_TOLERANCE):
-                        raise ValueError("Nonfinite or out-of-range sensor value")
                 except ValueError as error:
                     raise TelemetryValidationError(
                         f"CSV line {reader.line_num}, {feature}: use a finite numeric input normalized to [0,1]; blanks are not allowed"
                     ) from error
+                if not math.isfinite(value):
+                    raise TelemetryValidationError(f"CSV line {reader.line_num}, {feature}: infinite or NaN value is not supported")
+                if not (-NORMALIZED_RANGE_TOLERANCE <= value <= 1 + NORMALIZED_RANGE_TOLERANCE):
+                    raise TelemetryValidationError(f"CSV line {reader.line_num}, {feature}: outside normalized [0,1] range; physical-unit conversion is unavailable")
                 row.append(value)
             rows.append(row)
     except csv.Error as error:
@@ -107,6 +112,11 @@ def analyze_telemetry(content: bytes, pipeline: Pipeline, model_version: str) ->
     """Validate all rows, predict once, and summarize independent observations."""
     sensors = parse_telemetry_csv(content)
     output = predict_nev_faults(pipeline, sensors)
+    return summarize_predictions(output, sensors, model_version)
+
+
+def summarize_predictions(output: pd.DataFrame, sensors: pd.DataFrame, model_version: str) -> TelemetrySummary:
+    """Summarize one inference result; evaluation reuses it without predicting twice."""
     counts = output["fault_code"].value_counts()
     classes = {name: ClassSummary(count=int(counts.get(code, 0)),
                                 percentage=float(counts.get(code, 0)) / len(output) * 100)
@@ -122,8 +132,10 @@ def analyze_telemetry(content: bytes, pipeline: Pipeline, model_version: str) ->
         dominant_abnormal_fault=dominant[0] if len(dominant) == 1 else None,
         dominant_abnormal_faults=dominant,
         mean_model_confidence=float(np.mean([row.model_confidence for row in predictions])),
-        ignored_columns=sensors.attrs["ignored_columns"],
-        normalized_headers=sensors.attrs["normalized_headers"],
+        ignored_columns=sensors.attrs.get("ignored_columns", []),
+        normalized_headers=sensors.attrs.get("normalized_headers", {}),
         model_version=model_version, predictions_returned=len(returned),
         predictions_truncated=len(output) > len(returned), predictions=returned,
+        analytics=build_dashboard_data(sensors, labels=output["fault_code"],
+            label_basis="model_predictions", normalized=True, reference=load_dashboard_reference()),
     )

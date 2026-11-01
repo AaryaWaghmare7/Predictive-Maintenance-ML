@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from scripts.smoke_test_nev_inference import smoke_test_saved_model
-from scripts.smoke_test_localhost import SAMPLE_ROWS
+from scripts.smoke_test_localhost import SAMPLE_ROWS, REPORTED_MOTOR_VALUES
 from src.config.paths import PROJECT_ROOT
 from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES, NEV_DATA_DIR, get_nev_xy, file_sha256
 from src.evaluation.metrics import multiclass_classification_metrics
@@ -27,6 +27,28 @@ def test_user_supplied_normalized_examples_cover_all_four_classes():
     output = predict_nev_faults(load_nev_fault_pipeline(), sensors)
     assert output.fault_code.tolist() == [0, 1, 2, 3]
     assert output.fault_name.tolist() == list(NEV_CLASSES.values())
+
+
+def test_reported_exact_motor_case_keeps_values_and_probability_alignment():
+    import numpy as np
+    from fastapi.testclient import TestClient
+    from src.api.app import create_app
+    sensors = pd.DataFrame([REPORTED_MOTOR_VALUES], columns=NEV_FEATURES)
+    model = load_nev_fault_pipeline()
+    before = file_sha256(NEV_PIPELINE_PATH)
+    transformed = model.named_steps["preprocessor"].transform(sensors)
+    np.testing.assert_array_equal(transformed, sensors.to_numpy())
+    assert list(model.classes_) == [0,1,2,3]
+    assert model.predict(sensors).tolist() == [1]
+    assert model.predict_proba(sensors).tolist() == [[0.0,1.0,0.0,0.0]]
+    assert all(tree.predict_proba(transformed)[0,1] == 1.0
+               for tree in model.named_steps["classifier"].estimators_)
+    with TestClient(create_app()) as client:
+        result = client.post("/predict-fault", json=sensors.iloc[0].to_dict()).json()
+        assert result["predicted_class"] == 1 and result["model_confidence"] == 1.0
+        assert list(result["class_probabilities"]) == list(NEV_CLASSES.values())
+        assert list(result["class_probabilities"].values()) == [0.0,1.0,0.0,0.0]
+    assert file_sha256(NEV_PIPELINE_PATH) == before
 
 
 def test_model_loading_is_independent_of_working_directory(tmp_path, monkeypatch):

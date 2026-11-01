@@ -26,6 +26,7 @@ SAMPLE_ROWS = (
     (0.586, 0.275, 0.355, 0.398, 0.452, 0.728, 0.326),
     (0.180, 0.453, 0.393, 0.782, 0.227, 0.287, 0.515),
 )
+REPORTED_MOTOR_VALUES = (0.80, 0.597, 0.073, 0.10, 0.92, 0.28, 0.12)
 
 
 def csv_bytes(rows=SAMPLE_ROWS, headers=NEV_FEATURES):
@@ -122,6 +123,11 @@ def smoke_test_localhost(base_url="http://127.0.0.1:8012"):
         invalid.pop(NEV_FEATURES[0])
         assert client.post("/predict-fault", json=invalid).status_code == 422
         print("Invalid and missing fields: HTTP 422")
+        exact = client.post("/predict-fault", json=dict(zip(NEV_FEATURES, REPORTED_MOTOR_VALUES)))
+        exact.raise_for_status()
+        assert exact.json()["class_probabilities"] == dict(zip(NEV_CLASSES.values(), [0.0, 1.0, 0.0, 0.0]))
+        assert exact.json()["predicted_class"] == 1 and exact.json()["model_confidence"] == 1.0
+        print("Reported exact Motor case: [0,1,0,0]; genuine model confidence 1.0, not real-world certainty")
 
         dashboard = client.get("/")
         dashboard.raise_for_status()
@@ -129,8 +135,9 @@ def smoke_test_localhost(base_url="http://127.0.0.1:8012"):
                      "Awaiting vehicle analysis", "Download Sample CSV",
                      "RUL model not yet connected.", "Risk scoring is disabled."):
             assert text in dashboard.text
-        for asset, expected_mime in (("app.js?v=evision-1", "text/javascript"),
-                                     ("styles.css?v=evision-1", "text/css"),
+        for asset, expected_mime in (("app.js?v=evision-2", "text/javascript"),
+                                     ("analytics.js?v=analytics-1", "text/javascript"),
+                                     ("styles.css?v=evision-2", "text/css"),
                                      ("evision-car.webp", "image/webp"),
                                      ("synthetic_normalized_telemetry.csv", "text/csv")):
             response = client.get(f"/static/{asset}")

@@ -21,3 +21,13 @@ def test_binary_classification_metrics_reports_class_one_metrics() -> None:
     assert metrics["f1_class_1"] == pytest.approx(0.5)
     assert metrics["roc_auc"] == pytest.approx(0.75)
     assert "precision" in metrics["classification_report"]
+
+
+def test_multiclass_probability_diagnostics_are_fixed_and_do_not_fit():
+    from src.evaluation.metrics import multiclass_probability_diagnostics
+    result = multiclass_probability_diagnostics([0, 1, 2, 3], [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], [0,1,2,3])
+    assert result["multiclass_brier_sum"] == 0
+    assert result["macro_average_precision"] == 1
+    assert result["top_label_reliability_bins"] == [{"lower": .9, "upper": 1., "count": 4, "mean_confidence": 1., "observed_accuracy": 1.}]
+    with pytest.raises(ValueError):
+        multiclass_probability_diagnostics([0], [[-1,0,0,2]], [0,1,2,3])

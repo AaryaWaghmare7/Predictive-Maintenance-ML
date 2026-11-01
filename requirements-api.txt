@@ -8,3 +8,6 @@ starlette==1.7.0
 uvicorn==0.54.0
 python-multipart==0.0.32
 pydantic==2.12.4
+# Targeted transitive security fixes; do not change the saved ML environment.
+anyio==4.14.2
+idna==3.15

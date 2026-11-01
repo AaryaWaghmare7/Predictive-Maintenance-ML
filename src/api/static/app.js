@@ -11,6 +11,7 @@ const samples = [
 ];
 const byId = (id) => document.getElementById(id);
 const percent = (value) => `${(value * 100).toFixed(1)}%`;
+const analytics = () => typeof window === "undefined" ? null : window.EVisionAnalytics;
 const sampleButtons = Array.from(document.querySelectorAll("[data-sample]"));
 let modelReady = false;
 let faultBusy = false;
@@ -20,6 +21,8 @@ let selectedFault = null;
 let chartButtons = [];
 
 async function requestJSON(path, options) {
+  const token = byId("api-token")?.value.trim();
+  if (token) options = {...options, headers: {...options?.headers, Authorization: `Bearer ${token}`}};
   let response;
   try {
     response = await fetch(path, options);
@@ -51,6 +54,7 @@ async function checkHealth() {
   try {
     const health = await requestJSON("/health");
     modelReady = health.fault_model_status === "ready";
+    byId("access-panel").hidden = !health.authentication_required;
     byId("model-status-text").textContent = modelReady ? "Model Online" : "Model Unavailable";
     byId("model-status").dataset.state = modelReady ? "ready" : "unavailable";
     byId("prediction-version").textContent = health.model_version || "Unavailable";
@@ -109,12 +113,31 @@ byId("fault-form").addEventListener("submit", async (event) => {
     byId("predicted-fault").textContent = result.predicted_fault;
     byId("model-confidence").textContent = percent(result.model_confidence);
     byId("confidence-fill").style.width = percent(result.model_confidence);
+    byId("class-probabilities").textContent = Object.entries(result.class_probabilities || {}).map(([name, value]) => `${name}: ${percent(value)}`).join(" · ");
     byId("prediction-status").textContent = result.status === "normal" ? "Normal label predicted" : "Fault label predicted";
     byId("prediction-version").textContent = result.model_version;
     byId("fault-result").classList.toggle("abnormal", result.predicted_class !== 0);
     byId("result-state").textContent = result.predicted_class === 0 ? "Normal" : "Fault detected";
     byId("fault-empty").hidden = true;
     byId("fault-result").hidden = false;
+    const guidance = byId("fault-guidance");
+    guidance.replaceChildren();
+    if (result.guidance) {
+      const g = result.guidance;
+      const sections = [
+        ["Observed normalized readings", Object.entries(g.observed_normalized_readings).map(([name, value]) => `${name}: ${value}`).join(" · ")],
+        ["Interpretation", g.sensor_relevance],
+        ["Possible causes — not confirmed", g.possible_causes.join(" ")],
+        ["Recommended inspection", g.inspection_steps.join(" ")],
+        ["Inspection workflow", `${g.maintenance_priority.category.replaceAll("_", " ")}. ${g.maintenance_priority.basis}`],
+        ["Safety and limitations", `${g.safety} ${g.limitations}`],
+      ];
+      sections.forEach(([title, text]) => {
+        const heading = document.createElement("h4"); heading.textContent = title;
+        const paragraph = document.createElement("p"); paragraph.textContent = text;
+        guidance.append(heading, paragraph);
+      });
+    }
   } catch (error) {
     byId("fault-error").textContent = error.message;
     byId("result-state").textContent = "Analysis unavailable";
@@ -210,6 +233,7 @@ function selectCsvClass(name) {
 byId("clear-csv-filter").addEventListener("click", () => selectCsvClass(null));
 
 function clearTelemetry() {
+  analytics()?.clearUploads("csv");
   telemetryResult = null;
   selectedFault = null;
   chartButtons = [];
@@ -269,6 +293,7 @@ byId("csv-form").addEventListener("submit", async (event) => {
     // Browser supplies Content-Type and the multipart boundary; do not set them.
     const result = await requestJSON("/analyze-csv", {method: "POST", body: upload});
     telemetryResult = result;
+    analytics()?.addUpload("csv", file.name, result.analytics);
     byId("csv-rows").textContent = result.rows_analyzed;
     byId("csv-confidence").textContent = percent(result.mean_model_confidence);
     byId("csv-dominant").textContent = result.dominant_abnormal_faults.length
@@ -298,6 +323,91 @@ byId("csv-form").addEventListener("submit", async (event) => {
   }
 });
 // Motion is optional: inference and forms never depend on an animation library.
+// Independent, bounded dataset workflows; never share one file's result with another.
+let datasetsBusy = false;
+byId("dataset-files").addEventListener("change", () => {
+  analytics()?.clearUploads("dataset");
+  byId("dataset-reports").replaceChildren();
+  byId("dataset-status").textContent = "New file selection. Run the workflow to calculate its own analytics; previous upload reports were cleared.";
+});
+byId("dataset-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (datasetsBusy) return;
+  const files = Array.from(byId("dataset-files").files);
+  const mode = byId("dataset-mode").value;
+  const normalized = byId("normalization-confirmed").checked;
+  const labels = byId("labels-confirmed").checked;
+  const table = byId("dataset-table").value;
+  const mapping = byId("dataset-mapping").value || "{}";
+  const reports = byId("dataset-reports");
+  reports.replaceChildren();
+  analytics()?.clearUploads("dataset");
+  if (!files.length || files.length > 5) {
+    byId("dataset-status").textContent = "Choose 1–5 files for independent analysis."; return;
+  }
+  if (mode !== "inspect" && (!normalized || (mode === "evaluate" && !labels))) {
+    byId("dataset-status").textContent = "Confirm compatible normalization, and ground-truth label meaning for evaluation. Otherwise use Inspect only."; return;
+  }
+  datasetsBusy = true;
+  const controls = Array.from(event.target.querySelectorAll("input,select,textarea"));
+  controls.forEach((control) => { control.disabled = true; });
+  byId("dataset-button").disabled = true;
+  event.target.setAttribute("aria-busy", "true");
+  try {
+    for (const file of files) {
+      const card = document.createElement("article"); card.className = "dataset-report";
+      const title = document.createElement("h3"); title.textContent = file.name;
+      card.appendChild(title); reports.appendChild(card);
+      byId("dataset-status").textContent = `Processing ${file.name}…`;
+      try {
+        if (!file.size || file.size > 5 * 1024 * 1024) throw new Error("Use a nonempty file no larger than 5 MiB.");
+        const upload = new FormData();
+        Object.entries({file, mode, table, mapping, normalized, labels_confirmed: labels}).forEach(([key, value]) => upload.append(key, value));
+        const result = await requestJSON("/analyze-dataset", {method: "POST", body: upload});
+        const inspection = result.inspection;
+        analytics()?.addUpload("dataset", file.name, result.analytics);
+        const status = document.createElement("p"); status.textContent = inspection.reason;
+        card.appendChild(status);
+        if (result.prediction) {
+          const counts = document.createElement("p");
+          counts.textContent = `${result.prediction.rows_analyzed} individual observations (independence not established). ` + Object.entries(result.prediction.classes).map(([name, item]) => `${name}: ${item.count} (${item.percentage.toFixed(1)}%)`).join(" · ");
+          card.appendChild(counts);
+        }
+        if (result.evaluation) {
+          const e = result.evaluation;
+          const metrics = document.createElement("p");
+          metrics.textContent = `Uploaded-data accuracy: ${percent(e.accuracy)} · Macro F1: ${e.macro_f1.toFixed(4)}. ${e.warning}`;
+          card.appendChild(metrics);
+        } else {
+          const note = document.createElement("p"); note.textContent = "No accuracy measured. Prediction counts and confidence are not evaluation metrics.";
+          card.appendChild(note);
+        }
+        const details = document.createElement("details");
+        const summary = document.createElement("summary"); summary.textContent = "Inspection details, quality findings and evaluation metrics";
+        const data = document.createElement("pre"); data.textContent = JSON.stringify({inspection, evaluation: result.evaluation}, null, 2);
+        details.append(summary, data); card.appendChild(details);
+      } catch (error) {
+        const message = document.createElement("p"); message.className = "error";
+        message.textContent = error.message; card.appendChild(message);
+      }
+    }
+    byId("dataset-status").textContent = "Workflow complete. Review each file independently; uploads are not retained.";
+  } finally {
+    datasetsBusy = false;
+    controls.forEach((control) => { control.disabled = false; });
+    byId("dataset-button").disabled = false;
+    event.target.setAttribute("aria-busy", "false");
+  }
+});
+// Both deferred scripts have completed before DOMContentLoaded. Reuse the API
+// helper so access configuration/errors stay consistent with existing flows.
+if (typeof window !== "undefined") {
+  window.addEventListener("DOMContentLoaded", async () => {
+    if (!analytics()) return;
+    try { analytics().setReference(await requestJSON("/analytics/reference")); }
+    catch (error) { analytics().referenceUnavailable(error.message); }
+  });
+}
 // Observe the hero so offscreen/reduced/mobile views have no scroll listener.
 function initializeMotion() {
   const systemMotion = window.matchMedia("(prefers-reduced-motion: reduce)");

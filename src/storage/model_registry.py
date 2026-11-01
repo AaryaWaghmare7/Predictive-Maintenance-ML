@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 
 from src.config.paths import MODEL_DIR
-from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES
+from src.data.nev_fault import NEV_CLASSES, NEV_FEATURES, file_sha256
 
 NEV_PIPELINE_PATH = MODEL_DIR / "experiment_2" / "nev_fault_pipeline.joblib"
 
@@ -31,6 +31,8 @@ def load_nev_fault_pipeline(path: str | Path = NEV_PIPELINE_PATH) -> Pipeline:
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError("Saved NEV pipeline is missing; obtain the trusted local artifact")
+    if path.resolve() == NEV_PIPELINE_PATH.resolve() and file_sha256(path) != "010ff88628b7d58cb3aa1f8d2430b1087e3aef1936c37082edfde7270acbe987":
+        raise ValueError("Approved NEV artifact checksum mismatch; refusing deserialization")
     with warnings.catch_warnings():
         warnings.simplefilter("error", InconsistentVersionWarning)
         pipeline = joblib.load(path)

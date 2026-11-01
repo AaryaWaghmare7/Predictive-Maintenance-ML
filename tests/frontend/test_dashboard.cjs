@@ -50,6 +50,72 @@ const summary = {rows_analyzed:4, mean_model_confidence:.9975, dominant_abnormal
   ignored_columns:['Fault Label'], normalized_headers:{' Voltage (V) ':'Voltage (V)'}};
 const response = (data, ok=true, status=200) => ({ok, status, json:async()=>data});
 
+test('reported exact Motor inputs preserve all seven canonical fields and 100% output', async () => {
+  const ui=await setup(() => response({...prediction,predicted_class:1,predicted_fault:'Motor Fault',model_confidence:1,class_probabilities:{Normal:0,'Motor Fault':1,'Inverter Fault':0,'Battery Fault':0}}));
+  const values=[.80,.597,.073,.10,.92,.28,.12];
+  values.forEach((value,index)=>{ui.inputs[index].value=String(value);});
+  await ui.element('fault-form').trigger('submit');
+  const sent=ui.calls.find(call=>call.url==='/predict-fault');
+  assert.deepEqual(JSON.parse(sent.options.body),Object.fromEntries(features.map((name,index)=>[name,values[index]])));
+  assert.equal(ui.element('model-confidence').textContent,'100.0%');
+  assert.match(ui.element('class-probabilities').textContent,/Motor Fault: 100.0%/);
+});
+
+test('dataset UI requires explicit confirmation before prediction', async () => {
+  const ui = await setup();
+  ui.element('dataset-files').files = [{name:'example.csv',size:100}];
+  ui.element('dataset-mode').value = 'predict';
+  await ui.element('dataset-form').trigger('submit');
+  assert.equal(ui.calls.filter(c=>c.url==='/analyze-dataset').length,0);
+  assert.match(ui.element('dataset-status').textContent,/Confirm compatible normalization/);
+});
+
+test('real upload controller forwards replacement analytics and clears stale chart sources', async () => {
+  const browser=motionBrowser(), events=[];
+  browser.window.EVisionAnalytics={clearUploads:origin=>events.push(['clear',origin]),
+    addUpload:(origin,name,data)=>events.push(['add',origin,name,data])};
+  let rows=4;
+  const ui=await setup(()=>response({...summary,analytics:{rows}}),browser.window);
+  ui.element('telemetry-file').files=[{name:'first.csv',size:100}];
+  await ui.element('telemetry-file').trigger('change');
+  await ui.element('csv-form').trigger('submit');
+  assert.equal(events.find(e=>e[0]==='add')[3].rows,4);
+  rows=2;ui.element('telemetry-file').files=[{name:'second.csv',size:90}];
+  await ui.element('telemetry-file').trigger('change');
+  await ui.element('csv-form').trigger('submit');
+  const added=events.filter(e=>e[0]==='add');
+  assert.equal(added.length,2);assert.equal(added[1][2],'second.csv');assert.equal(added[1][3].rows,2);
+  assert.ok(events.filter(e=>e[0]==='clear' && e[1]==='csv').length>=2);
+});
+
+test('multiple datasets remain independent and recover from one invalid file', async () => {
+  let count=0;
+  const ui=await setup(() => ++count===1 ? response({detail:'Missing sensor'},false,422) : response({inspection:{reason:'Schema/ranges accepted',compatible:true}}));
+  ui.element('dataset-files').files=[{name:'bad.csv',size:100},{name:'good.csv',size:100}];
+  ui.element('dataset-mode').value='inspect';
+  await ui.element('dataset-form').trigger('submit');
+  assert.equal(ui.calls.filter(c=>c.url==='/analyze-dataset').length,2);
+  const cards=ui.element('dataset-reports').children;
+  assert.equal(cards.length,2);
+  assert.equal(cards[0].children[0].textContent,'bad.csv');
+  assert.match(cards[0].children[1].textContent,/Missing sensor/);
+  assert.equal(cards[1].children[0].textContent,'good.csv');
+  assert.match(cards[1].children[2].textContent,/No accuracy measured/);
+  assert.equal(ui.element('dataset-button').disabled,false);
+});
+
+test('dataset UI sends evaluation confirmation explicitly and uses text nodes', async () => {
+  const ui=await setup(() => response({inspection:{reason:'<script>untrusted</script>'}}));
+  ui.element('dataset-files').files=[{name:'<img onerror=bad>.csv',size:100}];
+  ui.element('dataset-mode').value='evaluate';
+  ui.element('normalization-confirmed').checked=true;
+  ui.element('labels-confirmed').checked=true;
+  await ui.element('dataset-form').trigger('submit');
+  const call=ui.calls.find(c=>c.url==='/analyze-dataset');
+  assert.equal(call.options.body.entries.find(([key])=>key==='labels_confirmed')[1],true);
+  assert.equal(ui.element('dataset-reports').children[0].children[0].textContent,'<img onerror=bad>.csv');
+});
+
 async function setup(handler, browserWindow) {
   const ids = new Map();
   const element = (id) => { if (!ids.has(id)) ids.set(id,new Element()); return ids.get(id); };

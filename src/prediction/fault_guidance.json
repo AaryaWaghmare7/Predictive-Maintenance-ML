@@ -1,0 +1,12 @@
+{
+  "version": "inspection-guidance-1",
+  "source": "https://www.nhtsa.gov/vehicle-safety/electric-and-hybrid-vehicles",
+  "limitation": "General inspection prompts, not a diagnosis, causal attribution, repair procedure or OEM maintenance schedule. Normalized values cannot establish physical operating-limit violations.",
+  "safety": "Follow the vehicle manufacturer's instructions. High-voltage batteries and inverters require qualified EV technicians; do not open, probe or repair them yourself. Actual vehicle warnings, damage or symptoms override this prototype.",
+  "classes": {
+    "0": {"sensors": ["Voltage (V)", "Current (A)", "Temperature (°C)"], "possible_causes": ["This observation resembles the dataset's Normal class; this does not rule out unmeasured faults."], "checks": ["Continue the manufacturer's scheduled maintenance and investigate any actual warning or symptom regardless of this label."], "priority": "routine_review"},
+    "1": {"sensors": ["Motor Speed (RPM)", "Temperature (°C)", "Vibration (g)"], "possible_causes": ["Electrical, mechanical or sensor-related conditions are possibilities requiring technician diagnosis; no specific failed part is established."], "checks": ["Ask a qualified technician to compare speed, temperature and vibration with the vehicle's documented operating conditions and diagnostic codes."], "priority": "technician_review_requested"},
+    "2": {"sensors": ["Voltage (V)", "Current (A)", "Temperature (°C)"], "possible_causes": ["Power-electronics, supply, cooling or measurement issues are possible; the model does not isolate a component defect."], "checks": ["Have a qualified EV technician review manufacturer diagnostic codes, power-electronics supply and cooling information using approved procedures."], "priority": "technician_review_requested"},
+    "3": {"sensors": ["Voltage (V)", "Current (A)", "Temperature (°C)"], "possible_causes": ["Battery-system, thermal-management or sensor issues require confirmation; cell condition and remaining life are not measured here."], "checks": ["Ask a qualified EV technician to inspect manufacturer battery-management diagnostics and approved thermal-management records."], "priority": "technician_review_requested"}
+  }
+}

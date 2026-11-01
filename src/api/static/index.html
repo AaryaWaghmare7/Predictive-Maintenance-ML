@@ -12,9 +12,10 @@
     if (location.protocol === "file:") location.replace("http://127.0.0.1:8012/");
   </script>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/static/styles.css?v=evision-1">
+  <link rel="stylesheet" href="/static/styles.css?v=evision-2">
   <link rel="preload" as="image" href="/static/evision-car.webp" type="image/webp">
-  <script src="/static/app.js?v=evision-1" defer></script>
+  <script src="/static/app.js?v=evision-2" defer></script>
+  <script src="/static/analytics.js?v=analytics-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to diagnosis</a>
@@ -40,7 +41,7 @@
       <nav class="topnav" aria-label="Dashboard navigation">
         <a href="#home">Home</a>
         <a href="#diagnostics">Diagnostics</a>
-        <a href="#analytics">Analytics</a>
+        <a href="#analytics-workspace">Analytics</a>
         <a href="#system-heading">Models</a>
         <a href="#reports">Reports</a>
         <a href="#documentation">Documentation</a>
@@ -49,6 +50,7 @@
     </div>
   </header>
   <main id="main-content">
+    <section id="access-panel" class="card access-panel" hidden><label for="api-token">API access token (kept in this page's memory only)</label><input id="api-token" type="password" autocomplete="off" maxlength="256" placeholder="Paste the configured bearer token"><p class="small">Required only when the server operator configures access protection. Never include this token in screenshots or bug reports.</p></section>
     <section id="home" class="hero" aria-labelledby="hero-heading">
       <div class="studio-light" aria-hidden="true"></div>
       <div class="hero-lines" aria-hidden="true"><span></span><span></span></div>
@@ -98,6 +100,39 @@
           <details id="row-details"><summary>View row-level predictions</summary><div class="table-scroll"><table><caption>File order is not time order. These are model predictions, not confirmed fault events. Downloads include returned rows only (up to 1,000), irrespective of the chart filter.</caption><thead><tr><th scope="col">Observation #</th><th scope="col">Predicted fault</th><th scope="col">Model Confidence</th></tr></thead><tbody id="row-predictions"></tbody></table></div></details>
         </div>
       </section>
+    <section id="analytics-workspace" class="card analytics-workspace" aria-labelledby="analytics-heading">
+      <div class="card-heading"><div><p class="eyebrow">EXPLORE THE EVIDENCE</p><h2 id="analytics-heading">Interactive Sensor Analytics</h2></div><span class="neutral-tag">Original reference ≠ uploaded observations</span></div>
+      <p id="analytics-reference-note" class="small">Original analysis: report 09 and hash-verified aggregate NEV statistics. Class-dependent reference plots use training data only. No raw training records are embedded.</p>
+      <div class="analytics-selectors">
+        <div class="field"><label for="analytics-source">Data source / uploaded file</label><select id="analytics-source" disabled><option>Loading original reference…</option></select></div>
+        <div class="field"><label for="analytics-class">Class filter · chart summaries only</label><select id="analytics-class"><option value="all">All categories</option><option value="0">Normal</option><option value="1">Motor Fault</option><option value="2">Inverter Fault</option><option value="3">Battery Fault</option></select></div>
+      </div>
+      <p id="analytics-status" class="small" role="status">Loading reference… Upload data is never represented by the original training charts.</p>
+      <p id="analytics-warnings" class="analytics-notice" role="status"></p>
+      <div class="analytics-tabs" role="group" aria-label="Analytics views">
+        <button type="button" class="secondary-button" data-analytics-view="distributions" aria-pressed="true">Seven sensor histograms</button>
+        <button type="button" class="secondary-button" data-analytics-view="classes" aria-pressed="false">Class boxplots</button>
+        <button type="button" class="secondary-button" data-analytics-view="relationships" aria-pressed="false">Correlation &amp; scatter</button>
+        <button type="button" class="secondary-button" data-analytics-view="evidence" aria-pressed="false">Importance &amp; associations</button>
+        <button type="button" class="secondary-button" data-analytics-view="comparison" aria-pressed="false">Upload vs training</button>
+      </div>
+      <div id="scatter-controls" class="analytics-selectors" hidden>
+        <div class="field"><label for="scatter-x">X / comparison sensor</label><select id="scatter-x"></select></div>
+        <div id="scatter-relationship-controls" class="analytics-subcontrols">
+        <div class="field"><label for="scatter-y">Y sensor</label><select id="scatter-y"></select></div>
+        <div class="field"><label for="scatter-x-min">X minimum</label><input id="scatter-x-min" type="number" step="any" value="0"></div>
+        <div class="field"><label for="scatter-x-max">X maximum</label><input id="scatter-x-max" type="number" step="any" value="1"></div>
+        <div class="field"><label for="scatter-y-min">Y minimum</label><input id="scatter-y-min" type="number" step="any" value="0"></div>
+        <div class="field"><label for="scatter-y-max">Y maximum</label><input id="scatter-y-max" type="number" step="any" value="1"></div>
+        <button id="scatter-apply" type="button" class="secondary-button">Apply plot ranges</button>
+        <button id="scatter-reset" type="button" class="secondary-button">Reset plot ranges</button>
+        </div>
+      </div>
+      <div id="analytics-charts" class="analytics-canvas"></div>
+      <p id="analytics-tooltip" class="analytics-tooltip" role="status">Hover a mark or focus a chart cell for values.</p>
+      <div class="analytics-downloads"><button id="analytics-export-json" type="button" class="secondary-button" disabled>Download analytics JSON</button><button id="analytics-export-csv" type="button" class="secondary-button" disabled>Download sensor-summary CSV</button><button id="analytics-export-report" type="button" class="secondary-button" disabled>Download report · HTML / print to PDF</button></div>
+      <p class="small">Chart summaries use all available observations; scatter is bounded and labeled. Undefined correlations are not zero. Values retain uploaded/model scale—not recovered physical units. Correlation, association and importance do not establish cause, safe operation or real-world model validation. Chart panels scroll horizontally on small screens.</p>
+    </section>
     <section id="diagnostics" aria-labelledby="diagnostics-heading">
     <div class="page-heading">
       <div><p class="eyebrow">THE DIAGNOSTIC WORKSPACE</p><h2 id="diagnostics-heading" class="section-title">Understand the signal.</h2><p class="page-description">Seven sensor inputs. Four diagnostic classes. One evidence-led workflow.</p></div>
@@ -122,7 +157,7 @@
             <button type="button" class="sample-button" data-sample="1"><span class="sample-code" aria-hidden="true">01</span>Load Motor Fault Sample</button>
             <button type="button" class="sample-button" data-sample="2"><span class="sample-code" aria-hidden="true">02</span>Load Inverter Fault Sample</button>
             <button type="button" class="sample-button" data-sample="3"><span class="sample-code" aria-hidden="true">03</span>Load Battery Fault Sample</button>
-          </div><p id="sample-status" class="small" role="status">Samples fill the form only. Click Analyze Vehicle to run diagnosis.</p></div>
+          </div><p id="sample-status" class="small" role="status">Samples fill the form only. Explore Demo loads the Motor Fault example; it is not a live vehicle reading.</p></div>
           <div class="form-actions"><button id="analyze-button" class="primary-button" type="submit" disabled><svg class="icon" width="24" height="24" aria-hidden="true"><use href="#icon-pulse"/></svg><span id="analyze-label">Analyze Vehicle</span><svg class="icon action-arrow" aria-hidden="true"><use href="#icon-arrow"/></svg></button><span class="small">Saved pipeline · no fitting at inference</span></div>
         </form>
         <p id="fault-error" class="error" role="alert"></p>
@@ -135,12 +170,32 @@
             <p class="section-label">Vehicle Condition</p><h3 id="predicted-fault"></h3><p id="prediction-status" class="condition-status"></p>
             <div class="confidence-heading"><span>Model Confidence</span><strong id="model-confidence"></strong></div><div class="confidence-track" aria-hidden="true"><span id="confidence-fill"></span></div>
             <p class="small">Predicted-class probability, not a real-world failure probability. A Normal label does not guarantee safe operation.</p>
+            <p class="small">Uncalibrated confidence: 100% can reflect unanimous trees, not diagnostic certainty.</p>
+            <p id="class-probabilities" class="small"></p>
+            <div id="fault-guidance" class="guidance"></div>
           </div>
           <dl class="compact-list result-metadata"><div><dt>Model</dt><dd>Random Forest</dd></div><div><dt>Module</dt><dd>EV Fault Diagnosis</dd></div></dl>
         </section>
 
       </aside>
     </div>
+    </section>
+    <section id="dataset-workspace" class="card dataset-workspace" aria-labelledby="dataset-heading">
+      <h2 id="dataset-heading">Dataset Upload &amp; Evaluation</h2>
+      <p>Inspect first. Matching names and [0,1] ranges do not establish compatible normalization. Each file is analyzed separately; nothing is merged, stored or used for training.</p>
+      <form id="dataset-form">
+        <div class="input-grid">
+          <div class="field"><label for="dataset-files">CSV or SQLite · up to 5 files</label><input id="dataset-files" type="file" accept=".csv,.tsv,.sqlite,.sqlite3,.db" multiple required></div>
+          <div class="field"><label for="dataset-mode">Workflow</label><select id="dataset-mode"><option value="inspect">Inspect only — no predictions</option><option value="predict">Predict — no accuracy without labels</option><option value="evaluate">Evaluate against confirmed labels</option></select></div>
+          <div class="field"><label for="dataset-table">SQLite ordinary table name (after inspection)</label><input id="dataset-table" maxlength="128" placeholder="Inspect database to list allowed tables"></div>
+        </div>
+        <details><summary>Explicit column mapping (optional)</summary><p class="small">JSON object from exact model sensor name to uploaded column name. Mapping does not convert units. Never map Fault Label as a sensor.</p><textarea id="dataset-mapping" rows="3" maxlength="2048" aria-label="Column mapping JSON" placeholder='{"Voltage (V)": "confirmed_normalized_voltage"}'>{}</textarea></details>
+        <label class="confirmation"><input id="normalization-confirmed" type="checkbox"> I verified these values use the same NEV normalization and sensor meaning, not arbitrary raw readings or a different 0–1 scale.</label>
+        <label class="confirmation"><input id="labels-confirmed" type="checkbox"> For evaluation, I confirm Fault Label is ground truth: 0 Normal, 1 Motor, 2 Inverter, 3 Battery. These scores are not independently verified held-out performance.</label>
+        <button id="dataset-button" type="submit" class="primary-button">Run selected workflow</button>
+      </form>
+      <p id="dataset-status" role="status" class="small">No datasets inspected. SQL scripts and remote databases are not supported.</p>
+      <div id="dataset-reports" aria-live="polite"></div>
     </section>
     <div class="module-heading"><h2>Upcoming Modules</h2><span class="small">Under Development · not part of current predictions</span></div>
     <div class="future-grid">

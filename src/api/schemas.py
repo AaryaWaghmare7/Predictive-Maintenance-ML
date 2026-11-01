@@ -45,6 +45,7 @@ class FaultPrediction(BaseModel):
     status: Literal["normal", "fault_detected"]
     input_mode: Literal["normalized_proof_of_concept"] = INPUT_MODE
     model_version: str
+    guidance: dict | None = None
 
 
 class ClassSummary(BaseModel):
@@ -67,3 +68,4 @@ class TelemetrySummary(BaseModel):
     predictions_returned: int
     predictions_truncated: bool
     predictions: list[FaultPrediction]
+    analytics: dict | None = None

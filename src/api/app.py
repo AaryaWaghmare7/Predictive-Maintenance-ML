@@ -10,10 +10,15 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from typing import Literal
+import base64
+import hashlib
+import re
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
 import pandas as pd
 from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -26,6 +31,10 @@ from src.api.telemetry import (
 from src.data.nev_fault import NEV_FEATURES, file_sha256
 from src.prediction.nev_fault import predict_nev_faults
 from src.storage.model_registry import NEV_PIPELINE_PATH, load_nev_fault_pipeline
+from src.api.datasets import process_dataset
+from src.api.security import AccessPolicy
+from src.prediction.guidance import fault_guidance
+from src.eda.dashboard import load_dashboard_reference
 
 LOGGER = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -39,23 +48,42 @@ class RequestSafetyMiddleware:
     for a hosting provider's ingress controls. No body is copied or persisted here.
     """
 
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp, policy):
         self.app = app
+        self.policy = policy
+        inline = re.search(r'<script id="local-preview-guard">([\s\S]*?)</script>', (STATIC_DIR / "index.html").read_text()).group(1)
+        self.script_hash = base64.b64encode(hashlib.sha256(inline.encode()).digest()).decode()
+        docs = get_swagger_ui_html(openapi_url="/openapi.json", title="EVision - Swagger UI",
+                                   oauth2_redirect_url="/docs/oauth2-redirect").body.decode()
+        self.docs_hash = base64.b64encode(hashlib.sha256(re.findall(r"<script>([\s\S]*?)</script>", docs)[0].encode()).digest()).decode()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        limit = MAX_REQUEST_BYTES if scope["path"] == "/analyze-csv" else 16 * 1024
+        upload = scope["path"] in ("/analyze-csv", "/analyze-dataset") and scope["method"] == "POST"
+        limit = MAX_REQUEST_BYTES if upload else 16 * 1024
 
         async def safe_send(message):
             if message["type"] == "http.response.start":
+                # Local-only Swagger uses one CDN and an exact inline-script hash.
+                docs_csp = ("default-src 'self'; script-src https://cdn.jsdelivr.net 'sha256-" + self.docs_hash + "'; style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+                app_csp = ("default-src 'self'; script-src 'self' 'sha256-" + self.script_hash + "'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
                 message["headers"] = list(message["headers"]) + [
                     (b"x-content-type-options", b"nosniff"),
                     (b"x-frame-options", b"DENY"),
                     (b"referrer-policy", b"no-referrer"),
+                    (b"cache-control", b"no-store"),
+                    (b"content-security-policy", (docs_csp if scope["path"] == "/docs" and not self.policy.production else app_csp).encode()),
                 ]
+                if self.policy.production and scope.get("scheme") == "https":
+                    message["headers"].append((b"strict-transport-security", b"max-age=31536000"))
             await send(message)
 
+        rejected = self.policy.check(scope)
+        if rejected:
+            return await self.policy.rejection(*rejected)(scope, receive, safe_send)
+        if upload and self.policy.active_uploads >= 2:
+            return await self.policy.rejection(429, "Two uploads are already processing; retry later")(scope, receive, safe_send)
         length = dict(scope["headers"]).get(b"content-length", b"0")
         try:
             size = int(length)
@@ -75,7 +103,13 @@ class RequestSafetyMiddleware:
                 raise HTTPException(status_code=413, detail="Request exceeds the allowed body size")
             return message
 
-        await self.app(scope, limited_receive, safe_send)
+        if upload:
+            self.policy.active_uploads += 1
+        try:
+            await self.app(scope, limited_receive, safe_send)
+        finally:
+            if upload:
+                self.policy.active_uploads -= 1
 
 
 def health_check() -> dict[str, str]:
@@ -105,12 +139,16 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
         yield
         application.state.pipeline = None
 
+    policy = AccessPolicy()
     application = FastAPI(
         title="EVision", version="0.1.0",
         description="Local proof-of-concept fault diagnosis with normalized inputs; RUL/risk disabled.",
         lifespan=lifespan,
+        docs_url=None if policy.production else "/docs",
+        redoc_url=None, openapi_url=None if policy.production else "/openapi.json",
     )
-    application.add_middleware(RequestSafetyMiddleware)
+    application.state.access_policy = policy
+    application.add_middleware(RequestSafetyMiddleware, policy=policy)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_request: Request, error: RequestValidationError):
@@ -132,6 +170,7 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
             **health_check(), "status": "ok" if ready else "degraded",
             "application_status": "running", "fault_model_status": "ready" if ready else "unavailable",
             "model_version": getattr(application.state, "model_version", None),
+            "authentication_required": bool(policy.token),
             "input_mode": INPUT_MODE, "rul_status": "not_connected", "risk_status": "disabled",
             "warning": "Normalized proof-of-concept inputs only. Class probabilities are not real-world failure probabilities. No temporal or cross-vehicle generalization is established.",
         }
@@ -142,7 +181,9 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
         sensors = pd.DataFrame([payload.model_dump(by_alias=True)], columns=NEV_FEATURES)
         try:
             output = predict_nev_faults(pipeline, sensors)
-            return make_prediction(output.iloc[0], application.state.model_version)
+            prediction = make_prediction(output.iloc[0], application.state.model_version)
+            prediction.guidance = fault_guidance(prediction.predicted_class, sensors.iloc[0])
+            return prediction
         except Exception:
             LOGGER.exception("Fault inference failed")
             raise HTTPException(status_code=503, detail="Saved model inference failed; check the trusted artifact and compatible dependencies") from None
@@ -173,6 +214,34 @@ def create_app(model_path: str | Path = NEV_PIPELINE_PATH) -> FastAPI:
     @application.get("/", include_in_schema=False)
     def dashboard():
         return FileResponse(STATIC_DIR / "index.html")
+
+    @application.get("/analytics/reference")
+    def analytics_reference():
+        reference = load_dashboard_reference()
+        if reference is None:
+            raise HTTPException(503, "Verified analytics reference is unavailable; no training values are invented")
+        return reference
+
+    @application.post("/analyze-dataset")
+    async def dataset(file: UploadFile = File(...), mode: Literal["inspect", "predict", "evaluate"] = Form("inspect"),
+                      table: str = Form("", max_length=128), mapping: str = Form("{}", max_length=2048),
+                      normalized: bool = Form(False), labels_confirmed: bool = Form(False)):
+        pipeline = require_model() if mode != "inspect" else None
+        try:
+            content = await file.read(MAX_UPLOAD_BYTES + 1)
+        finally:
+            await file.close()
+        try:
+            return await run_in_threadpool(process_dataset, content, pipeline,
+                application.state.model_version, table=table, mapping=mapping,
+                mode=mode, normalized=normalized, labels_confirmed=labels_confirmed)
+        except TelemetryLimitError as error:
+            raise HTTPException(413, str(error)) from None
+        except TelemetryValidationError as error:
+            raise HTTPException(422, str(error)) from None
+        except Exception:
+            LOGGER.exception("Dataset processing failed")
+            raise HTTPException(503, "Dataset processing failed; no partial results returned") from None
 
     application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return application

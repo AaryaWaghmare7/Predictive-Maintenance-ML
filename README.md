@@ -174,15 +174,13 @@ fixtures, not training files. Optional frontend tests use Node's built-in runner
 
 ```bash
 node --check src/api/static/app.js
-node --test tests/frontend/test_dashboard.cjs
+node --test tests/frontend/test_dashboard.cjs tests/frontend/test_analytics.cjs
 ```
 
 Unit tests use tiny synthetic fixtures; they never regenerate the production
 model. Full saved-test metric reproduction is additionally checked when the
-original local testing CSV is present and matches its recorded hash. A clean
-checkout without raw datasets skips two optional checks: Experiment 1 raw-data
-feature selection and NEV test-metric reproduction. Saved-artifact smoke tests
-still run without either dataset.
+original local testing CSV is present and matches its recorded hash. Absence of
+that private CSV skips only that reproduction test, not saved-artifact smoke tests.
 
 ### Windows PowerShell — collaboration checkpoint
 
@@ -333,7 +331,161 @@ with component-aware splits, and evaluate MAE, RMSE, R² and near-failure errors
 before integration. It requires separate approval and suitable data. Estimates
 will concern the supported component, not the entire vehicle.
 
-## Deployment recommendation — not deployed
+## Local reliability and security update (2026-10-30)
+
+The saved classifier is unchanged. Explore Demo intentionally fills the Motor
+Fault sample. A displayed 100% is that model's uncalibrated predicted-class
+confidence, not an observed failure rate or real-world fault probability. The
+four supplied samples predict all four different classes; there is no Motor
+fallback on invalid data. The user's exact case `[0.80, 0.597, 0.073, 0.10, 0.92,
+0.28, 0.12]` was reproduced through the pipeline, API and browser as Motor with
+`[0,1,0,0]` class probabilities. All 200 trees agree; no preprocessing changes
+these complete inputs. This reflects sharp supplied-dataset boundaries, not
+diagnostic certainty. Exact-case regression tests preserve the behavior rather
+than changing displayed confidence cosmetically. Details are in report 14.
+
+**Dataset Upload & Evaluation** adds three explicit workflows using
+`POST /analyze-dataset` (multipart fields `file`, `mode`, `table`, `mapping`,
+`normalized`, `labels_confirmed`):
+
+- Inspect: lists recognized/missing/extra columns, target availability, numeric
+  ranges, dtypes, duplicates and invalid cells. No inference runs.
+- Predict: requires explicit confirmation of the same NEV normalization/context.
+  Names or 0–1 ranges alone are insufficient. No accuracy is measured.
+- Evaluate: additionally requires a confirmed `Fault Label` with the documented
+  0/1/2/3 meaning. Shows per-class scores, macro precision/recall/F1, confusion
+  matrix, applicable AUC/AP and probability diagnostics. These are uploaded-data
+  scores, **not independent unseen-test performance**. Exact known original
+  training/full file hashes are blocked from evaluation; reformatted files,
+  subsets, duplicate lineage and dishonest attestations cannot generally be
+  detected. No model is trained, tuned or calibrated.
+
+Supported files: UTF-8 CSV/BOM with comma, semicolon, tab or pipe separators,
+and SQLite database files containing explicitly selected ordinary tables.
+SQLite is imported into memory, query-only, with restricted schema/features,
+SQL authorizer, limits and a two-second query budget. Uploaded SQL is never
+executed; no remote database connection is supported. A Python build lacking
+SQLite `deserialize` must use CSV exports. Keep Python/SQLite patched; this is
+not an operating-system sandbox for arbitrary hostile databases.
+
+The UI handles at most five files **sequentially and separately**, each limited
+to 5 MiB, 20,000 rows, 100 columns and 128-character headers. There is no merge,
+row deletion, implicit unit conversion or automatic retraining. An optional
+mapping is an explicit JSON object from canonical model feature to source
+column; it cannot map labels or override an existing canonical feature.
+Errors identify missing sensors or invalid observations/columns. Existing
+`/analyze-csv` remains the strict comma-CSV prediction-only compatibility route.
+
+Manual results now show observed normalized readings and a versioned educational
+inspection guide from `src/prediction/fault_guidance.json`. It is not causal
+feature attribution or a confirmed diagnosis. General EV safety guidance follows
+[NHTSA](https://www.nhtsa.gov/vehicle-safety/electric-and-hybrid-vehicles);
+no DIY high-voltage repair procedures are provided. A non-Normal label requests
+technician review, while Normal retains routine review. These are **inspection
+workflow categories**, not validated urgency or Low/Medium/High failure risk.
+OEM limits, a time horizon and compatible validated component data are missing.
+RUL and quantified risk remain unavailable.
+
+### Security configuration — no deployment performed
+
+Local loopback use needs no secrets or accounts. Existing macOS and Windows
+commands above remain valid after `python -m pip install -r requirements.txt`.
+AnyIO 4.14.2 and idna 3.15 are targeted security pins; ML package versions remain
+unchanged. No new framework or database-service package is required.
+
+`.env.example` contains placeholders only; **it is not automatically loaded**.
+For optional access protection set `EVISION_API_TOKEN` in the process environment
+to a securely generated random ASCII token of at least 32 characters. The UI
+then shows a password-style token field. It is kept only in page memory, sent
+as a Bearer header and cleared by clearing the field/reloading; never include
+it in screenshots, URLs, Git or bug reports. No default token is supplied.
+
+Production mode (`EVISION_MODE=production`) additionally requires explicit
+`EVISION_ALLOWED_HOSTS` (comma-separated hostnames, no scheme/port) and refuses
+startup without the token. Every POST is then protected and interactive docs/
+OpenAPI are disabled. No accounts, passwords, cookies, roles, private history or
+admin operations are implemented. This is a **shared single-operator token gate**,
+not a multi-user authorization/session solution; rotation/revocation is manual
+through the environment and server restart. Do not use it for private multi-user
+records. Add a separately reviewed identity provider before that scope exists.
+
+Same-origin requests only; arbitrary Origin/Host and wrong content types are
+rejected. CSP restricts application scripts to local files and the exact preview
+guard hash. Inline styles remain allowed because existing animation/chart code
+sets dynamic CSS properties; inline scripts are not broadly allowed. Local-only
+Swagger needs its narrowly scoped jsDelivr dependency and an exact script hash.
+No user upload/model/dataset is served by the static mount. The canonical joblib
+hash is checked **before** deserialization; only trusted backend-controlled
+artifacts are permitted. A hash is not a substitute for a trusted supply chain.
+
+Limits are 60 manual requests/minute/client and 20 upload requests/minute/client,
+with two concurrent uploads per process, 16 KiB JSON and 6 MiB total multipart
+bodies. HTTP 429 includes Retry-After. These **in-memory single-worker controls**
+are not distributed rate limiting or a hard CPU/memory sandbox. Production still
+requires approved TLS, trusted proxy configuration, ingress limits, shared rate
+limiting when applicable and independent security review. HSTS is emitted only
+for production requests correctly identified as HTTPS, never localhost HTTP.
+
+See [the detailed reliability/security audit](reports/14_Reliability_and_Security_Audit.md)
+for original/final metrics, dependency findings, test evidence and remaining
+limitations. Historical results/reports are preserved. Training commands in
+earlier research reports are **not** part of application startup; do not rerun
+`scripts/run_nev_experiment.py` just to run EVision. This update is local-only:
+no commit, push, deployment, new model fitting or RUL-data download.
+
+## Interactive analytics (local update, 2026-10-31)
+
+Open **Analytics** in the navigation. Choose either the clearly labeled original
+NEV reference or an actual uploaded file; original charts are never presented as
+your vehicle's telemetry. The seven sensor histograms, class boxplots, Pearson
+heatmap, class-colored feature scatter, association and saved-model importance
+charts are interactive SVGs with source/class filters and numeric tooltips.
+Scatter range controls provide zoom; Reset restores data bounds. No charting
+framework, CDN, extra dependency or model fitting is required.
+
+Both CSV prediction and Dataset Upload & Evaluation feed this same dashboard.
+Inspect-only data can be explored without predicting: raw-scale values retain
+their actual histogram ranges and remain ineligible for NEV inference without
+compatible normalization. Missing/nonfinite chart exclusions are counted. Class
+charts use explicitly labeled **model predictions** or **user-confirmed labels**;
+unlabeled observations are not assigned invented categories. Multiple files keep
+separate source entries, even when filenames are identical; replacing a selection
+clears its previous charts. No files are combined.
+
+Histograms, quartiles and correlations use **all available upload observations**,
+not the first 1,000 returned predictions. Scatter is limited to a deterministic
+class-stratified display sample of at most 1,000 points and is labeled accordingly.
+Original training scatter uses joint-bin counts rather than raw row records.
+Full-data reference histograms/correlation use 11,000 rows; original class-based
+plots/associations use the 7,700 training rows only. Importance values come from
+the saved historical analysis and are **not upload-specific or causal**.
+
+Upload-versus-training shows observed ranges, medians, out-of-training-range
+counts and histogram differences. Range flags are not physical safety limits.
+Shape review uses total variation >0.25 with at least 30 finite observations,
+an explicitly documented **review heuristic, not a calibrated OOD detector or
+statistical significance test**. Class mix and incompatible scales may explain
+differences; no normalization parameters are invented and no rows are clipped.
+
+Download analytics JSON, source-labeled summary CSV, or the current chart view as
+a standalone HTML report. Open the HTML in a browser and print to PDF if needed;
+no server-side PDF service or private report storage is introduced.
+
+`GET /analytics/reference` serves a small aggregate snapshot in
+`reports/metrics/experiment_2/dashboard_reference.json`, prepared for a future
+approved commit. It contains no raw training vectors. To reproduce it with the
+original local raw files, run `python scripts/build_analytics_reference.py`, then
+restart FastAPI. This verifies recorded file hashes and never trains a model.
+If the snapshot is missing, reference/importance/comparison states are unavailable
+instead of being fabricated; upload analytics can still work.
+
+See [interactive analytics verification](reports/15_Interactive_Analytics.md) for
+methods, source boundaries and tests. This update implements the analytics scope,
+not the attached broader vehicle-profile/service-centre/RUL roadmap. Existing
+RUL/risk restrictions, model metrics and local-only/no-Git-publication boundary
+remain unchanged.
+
+## Future deployment recommendation — not deployed
 
 Prefer **one Render web service for FastAPI and the static frontend**. Relative
 API URLs remain same-origin; no frontend API-base environment setting or wildcard

@@ -76,3 +76,33 @@ def multiclass_classification_metrics(y_true, y_pred, probabilities, classes) ->
         "confusion_matrix": confusion_matrix(y_true, y_pred, labels=classes).tolist(),
         "per_class": classification_report(y_true, y_pred, labels=classes, output_dict=True, zero_division=0),
     }
+
+
+def multiclass_probability_diagnostics(y_true, probabilities, classes) -> dict[str, Any]:
+    """Fixed ten-bin top-label reliability diagnostics, never fitting calibration.
+
+    Brier uses the sum over all classes (not divided by class count or by two).
+    These diagnostics on supplied/uploaded data do not certify fleet calibration.
+    """
+    import numpy as np
+    from sklearn.metrics import log_loss
+
+    classes = list(classes)
+    scores = np.asarray(probabilities)
+    predicted = np.asarray(classes)[scores.argmax(axis=1)]
+    multiclass_classification_metrics(y_true, predicted, scores, classes)  # shared validation
+    target = np.asarray(y_true)
+    one_hot = (target[:, None] == np.asarray(classes)[None, :]).astype(float)
+    confidence = scores.max(axis=1)
+    correct = predicted == target
+    bins = []
+    for index in range(10):
+        mask = (confidence >= index/10) & ((confidence < (index+1)/10) if index < 9 else (confidence <= 1))
+        if mask.any():
+            bins.append({"lower": index/10, "upper": (index+1)/10,
+                "count": int(mask.sum()), "mean_confidence": float(confidence[mask].mean()),
+                "observed_accuracy": float(correct[mask].mean())})
+    return {"macro_average_precision": float(average_precision_score(one_hot, scores, average="macro"))
+            if set(target) == set(classes) else None,
+        "multiclass_brier_sum": float(np.mean(np.sum((scores-one_hot)**2, axis=1))),
+        "log_loss": float(log_loss(target, scores, labels=classes)), "top_label_reliability_bins": bins}
