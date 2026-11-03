@@ -26,9 +26,14 @@ The EVision dashboard uses only HTML/CSS/JavaScript and a local transparent WebP
 car; no GSAP/CDN or frontend build is required. Interactive CSV legends filter returned
 row details without changing whole-file counts or re-running inference.
 RUL/risk controls are disabled.
-Confidence is uncalibrated class probability, not a risk score. The API is
-localhost-only by default: authentication, rate limiting, calibration, safety
-assessment and public deployment are outside this MVP. A streaming ASGI guard
+Confidence is an uncalibrated model-generated class score, not a real-world
+failure probability or risk score. The API binds to localhost by default.
+Optional shared-token access, same-origin/Host checks, CSP and single-process
+rate/concurrency limits are implemented; production mode requires explicit
+hosts and a token and disables interactive docs. These controls are not
+multi-user authentication or comprehensive production-security certification.
+Calibration, safety assessment and public deployment remain outside the MVP.
+See [configuration and limitations](DEVELOPMENT_GUIDE.md). A streaming ASGI guard
 bounds multipart request bytes at 6 MiB before parsing (including chunked input),
 in addition to the existing 5 MiB CSV limit. Manual bodies are capped at 16 KiB.
 Basic security response headers are provided, but these controls do not replace
@@ -68,8 +73,9 @@ dataset's sequencing, identity or validated performance.
 - Preserve each model's native units and normalization. NEV physical-unit
   normalization parameters are unknown, so raw readings cannot safely be
   converted into NEV inputs by guessed scaling.
-- NEV lacks timestamps and vehicle IDs. Current CSV rows are independent
-  observations in uploaded order; they are not a longitudinal trajectory.
+- NEV lacks timestamps and vehicle IDs. CSV rows are handled as separate
+  observations in uploaded order; statistical independence is not established
+  and they are not a longitudinal trajectory.
 - Motor/battery/bearing RUL needs separately approved degradation data and
   leakage-safe grouped/time-aware evaluation. Fault diagnosis does not imply
   remaining-life prediction.
